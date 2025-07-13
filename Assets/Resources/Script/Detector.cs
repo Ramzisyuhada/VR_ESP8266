@@ -62,4 +62,15 @@ public class Detector : MonoBehaviour
     {
         var objek = args.interactableObject.transform.gameObject;
     }
+
+    private void Update()
+    {
+        string response = serialController.ReadSerialMessage();
+        if (!string.IsNullOrEmpty(response) &&
+            response != SerialController.SERIAL_DEVICE_CONNECTED &&
+            response != SerialController.SERIAL_DEVICE_DISCONNECTED)
+        {
+            Debug.Log("Respon dari Arduino: " + response);
+        }
+    }
 }

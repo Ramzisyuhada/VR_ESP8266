@@ -4,5 +4,12 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
-  m_configObjects: {}
+  m_Scenes:
+  - enabled: 0
+    path: Assets/Knife/Real Blood/Scenes/RealBloodShowcase.unity
+    guid: 4b9487a5c63b9984c94ffd23e3b20c88
+  m_configObjects:
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 1b4cbd16e9b272b4fb40d405e0544511,
+      type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 94922ae8859d24e4f830f3577b84fcfd,
+      type: 2}
