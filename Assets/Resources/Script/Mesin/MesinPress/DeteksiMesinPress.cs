@@ -4,9 +4,11 @@ using UnityEngine;
 
 public class DeteksiMesinPress : MonoBehaviour
 {
+
+    private Connection Con;
     void Start()
     {
-        
+        Con = GetComponent<Connection>();
     }
     private void OnTriggerEnter(Collider other)
     {
@@ -14,9 +16,21 @@ public class DeteksiMesinPress : MonoBehaviour
 
         if (other.gameObject.layer == 6)
         {
+            Con.SendWebSocketMessage();
             transform.GetComponentInParent<MesinPress>().TriggerKecelakaan();
 
             other.transform.parent.gameObject.SetActive(false);
+
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.gameObject.layer == 6)
+        {
+           // transform.GetComponentInParent<MesinPress>().TriggerKecelakaan();
+
+            other.transform.parent.gameObject.SetActive(true);
 
         }
     }
