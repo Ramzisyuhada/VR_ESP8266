@@ -13,24 +13,24 @@ public class Connection : MonoBehaviour
   async void Start()
   {
     // websocket = new WebSocket("ws://echo.websocket.org");
-    websocket = new WebSocket("ws://localhost:3000");
+    websocket = new WebSocket("ws://192.168.1.22:80/ws");
 
     websocket.OnOpen += () =>
     {
       Debug.Log("Connection open!");
     };
 
-    websocket.OnError += (e) =>
-    {
-      Debug.Log("Error! " + e);
-    };
+        websocket.OnError += (e) =>
+        {
+            Debug.Log("Error! " + e);
+        };
 
-    websocket.OnClose += (e) =>
-    {
-      Debug.Log("Connection closed!");
-    };
+        websocket.OnClose += (e) =>
+        {
+            Debug.Log("Connection closed!");
+        };
 
-    websocket.OnMessage += (bytes) =>
+        websocket.OnMessage += (bytes) =>
     {
       // Reading a plain text message
       var message = System.Text.Encoding.UTF8.GetString(bytes);
@@ -50,7 +50,7 @@ public class Connection : MonoBehaviour
     #endif
   }
 
-  public async void SendWebSocketMessage()
+   async void SendWebSocketMessage()
   {
     if (websocket.State == WebSocketState.Open)
     {

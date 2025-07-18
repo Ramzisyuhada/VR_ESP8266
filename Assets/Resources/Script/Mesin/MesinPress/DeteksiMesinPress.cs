@@ -16,7 +16,7 @@ public class DeteksiMesinPress : MonoBehaviour
 
         if (other.gameObject.layer == 6)
         {
-            Con.SendWebSocketMessage();
+           // Con.SendWebSocketMessage();
             transform.GetComponentInParent<MesinPress>().TriggerKecelakaan();
 
             other.transform.parent.gameObject.SetActive(false);
@@ -37,6 +37,7 @@ public class DeteksiMesinPress : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+       // Con.SendWebSocketMessage();
+
     }
 }
