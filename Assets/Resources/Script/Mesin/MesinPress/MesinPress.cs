@@ -38,7 +38,7 @@ public class MesinPress : MesinKecelakaanBase
     }
     public void JalankanHidrolic()
     {
-       BesiPress.SetActive(true);
+       //BesiPress.SetActive(true);
         _Anim.SetBool("Play", true);
        
 
