@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using UnityEngine;
 
 public class MesinPress : MesinKecelakaanBase
@@ -7,46 +8,54 @@ public class MesinPress : MesinKecelakaanBase
 
 
     private Animator _Anim;
-
+    [SerializeField] GameObject Tangan;
+    [SerializeField] Transform posisi;
     [SerializeField] GameObject BesiPress;
-    [SerializeField] GameObject ParticleDarah;
+    [SerializeField] AudioSource audio;
+    [SerializeField] GameObject UI;
+    private GameObject tangan;
+    private bool Onmesin;
+
+    private Connection con;
     public override void CekKondisi()
     {
     }
-
-    public override void TriggerKecelakaan()
-
+    public void Restart()
     {
+        GetComponentInChildren<DeteksiMesinPress>().tangan.SetActive(true);
 
-        string status = Arduino.ReadSerialMessage();
-        Vector3 posisi = BesiPress.transform.position;
-        GameObject Darah = Instantiate(ParticleDarah, posisi, Quaternion.identity);
-        Debug.Log("Memanggil TriggerKecelakaan()");
+        UI.SetActive(false);
+        _Anim.SetBool("Play", false);
+        con.SendWebSocketMessage("OFF");
+        Destroy(tangan);
+        Onmesin = false;
 
-        Arduino.SendSerialMessage("Merah");
-        if (status == SerialController.SERIAL_DEVICE_CONNECTED)
+    }
+    public override void TriggerKecelakaan()
+    {
+        if (Onmesin)
         {
-            Debug.Log("Serial terhubung (baru saja)");
+            UI.SetActive(true);    
+            tangan = Instantiate(Tangan, posisi.position, Quaternion.identity);
+            JalankanHidrolic();
+            _Anim.SetBool("Play", true);
+            audio.Play();
         }
-        else if (status == SerialController.SERIAL_DEVICE_DISCONNECTED)
-        {
-            Debug.LogWarning("Serial terputus.");
-            return;
-        }
- 
 
     }
     public void JalankanHidrolic()
     {
-       //BesiPress.SetActive(true);
-        _Anim.SetBool("Play", true);
-       
+        //BesiPress.SetActive(true);
+        Onmesin = true;
+
+
 
     }
 
     
     void Start()
     {
+        con = GetComponentInChildren<Connection>();
         _Anim = GetComponent<Animator>();   
     }
 

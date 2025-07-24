@@ -13,7 +13,7 @@ public class Connection : MonoBehaviour
   async void Start()
   {
     // websocket = new WebSocket("ws://echo.websocket.org");
-    websocket = new WebSocket("ws://192.168.1.22:80/ws");
+    websocket = new WebSocket("ws://192.168.52.93:80/ws");
 
     websocket.OnOpen += () =>
     {
@@ -30,15 +30,7 @@ public class Connection : MonoBehaviour
             Debug.Log("Connection closed!");
         };
 
-        websocket.OnMessage += (bytes) =>
-    {
-      // Reading a plain text message
-      var message = System.Text.Encoding.UTF8.GetString(bytes);
-      Debug.Log("Received OnMessage! (" + bytes.Length + " bytes) " + message);
-    };
-
-    // Keep sending messages at every 0.3s
-    InvokeRepeating("SendWebSocketMessage", 0.0f, 0.3f);
+        
 
     await websocket.Connect();
   }
@@ -50,7 +42,7 @@ public class Connection : MonoBehaviour
     #endif
   }
 
-   async void SendWebSocketMessage()
+  public async void SendWebSocketMessage(string message)
   {
     if (websocket.State == WebSocketState.Open)
     {
@@ -58,7 +50,7 @@ public class Connection : MonoBehaviour
       await websocket.Send(new byte[] { 10, 20, 30 });
 
       // Sending plain text
-      await websocket.SendText("PING");
+      await websocket.SendText(message);
     }
   }
 
