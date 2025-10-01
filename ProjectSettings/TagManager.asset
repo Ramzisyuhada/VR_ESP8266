@@ -9,6 +9,7 @@ TagManager:
   - Kuning
   - projectile
   - Zone
+  - OutZone
   layers:
   - Default
   - TransparentFX
