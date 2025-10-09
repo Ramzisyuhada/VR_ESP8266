@@ -7,6 +7,9 @@ TagManager:
   - Hijau
   - Merah
   - Kuning
+  - projectile
+  - Zone
+  - OutZone
   layers:
   - Default
   - TransparentFX
@@ -17,6 +20,7 @@ TagManager:
   - tangan
   - 
   - PostProcessing
+  - DynamicPose
   - 
   - 
   - 
@@ -27,9 +31,8 @@ TagManager:
   - 
   - 
   - 
-  - 
-  - 
-  - 
+  - Grabbable
+  - Hand
   - 
   - 
   - 
