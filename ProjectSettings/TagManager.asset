@@ -10,6 +10,8 @@ TagManager:
   - projectile
   - Zone
   - OutZone
+  - SnapZone
+  - Hand
   layers:
   - Default
   - TransparentFX
