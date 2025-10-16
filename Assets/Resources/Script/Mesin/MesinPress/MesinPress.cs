@@ -1,67 +1,71 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
 using UnityEngine;
+using UnityEngine.Animations.Rigging;
 
-public class MesinPress : MesinKecelakaanBase
+public class MesinPress : Mesin
 {
 
 
-    private Animator _Anim;
-    [SerializeField] GameObject Tangan;
-    [SerializeField] Transform posisi;
-    [SerializeField] GameObject BesiPress;
-    [SerializeField] AudioSource audio;
-    [SerializeField] GameObject UI;
-    private GameObject tangan;
-    private bool Onmesin;
 
-    private Connection con;
-    public override void CekKondisi()
+    [Header("VFX & Audio")]
+    [SerializeField] private GameObject darahVFXObj;
+    [SerializeField] private AudioSource darahSFX;     // opsional suara cipratan
+    [SerializeField] private AudioSource audioAman;
+    [SerializeField] private AudioSource AudioMesin;
+    [SerializeField] private AudioSource AudioAlarmKecelakaan;
+
+    private enum StatetMesin { None, TopPlateUp, Nyala, CylinderForward }
+    [SerializeField] private StatetMesin _statetMesin = StatetMesin.None;
+
+
+    [Header("Npc")]
+    [SerializeField] Transform PosisiNpc;
+    private Animator AnimNpc;
+    [Header("Player")]
+    private Vector3 PosisiPlayer;
+    private Animator Anim;
+
+    private void Awake()
     {
-    }
-    public void Restart()
-    {
-        GetComponentInChildren<DeteksiMesinPress>().tangan.SetActive(true);
-
-        UI.SetActive(false);
-        _Anim.SetBool("Play", false);
-        con.SendWebSocketMessage("OFF");
-        Destroy(tangan);
-        Onmesin = false;
-
-    }
-    public override void TriggerKecelakaan()
-    {
-        if (Onmesin)
-        {
-            UI.SetActive(true);    
-            tangan = Instantiate(Tangan, posisi.position, Quaternion.identity);
-            JalankanHidrolic();
-            _Anim.SetBool("Play", true);
-            audio.Play();
-        }
-
-    }
-    public void JalankanHidrolic()
-    {
-        //BesiPress.SetActive(true);
-        Onmesin = true;
-
-
-
+        AnimNpc = PosisiNpc.GetComponent<Animator>();
+        Anim = GetComponent<Animator>();
     }
 
-    
-    void Start()
-    {
-        con = GetComponentInChildren<Connection>();
-        _Anim = GetComponent<Animator>();   
-    }
 
-    // Update is called once per frame
-    void Update()
+    public void OnMesin()
     {
         
+
+        
+    }
+
+
+
+    void Start()
+    {
+        
+    }
+    public void OnTopPlateUpFinished()
+    {
+        Debug.Log("Animasi TopPlateUp selesai ✅");
+        if (AudioMesin != null)
+        {
+            AudioMesin.Play();
+        }
+    }
+
+    void Update()
+    {
+        float JarakPlayerMesin2 = Vector3.Distance(GameObject.FindWithTag("Player").transform.position, transform.position);
+        Debug.Log(JarakPlayerMesin2);
+        if (_statetMesin== StatetMesin.None && JarakPlayerMesin2 < 2.5f) {
+            Debug.Log("Hello ");
+            _statetMesin = StatetMesin.Nyala;
+            PosisiNpc.GetComponent<RigBuilder>().enabled = true;
+            AnimNpc.SetTrigger("TopPlateUp");
+           if (AudioMesin != null) AudioMesin.Play();
+
+        }
     }
 }

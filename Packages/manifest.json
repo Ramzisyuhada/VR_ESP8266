@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "com.endel.nativewebsocket": "https://github.com/endel/NativeWebSocket.git#upm",
+    "com.unity.animation.rigging": "1.2.1",
     "com.unity.burst": "1.8.12",
     "com.unity.cinemachine": "2.9.7",
     "com.unity.collab-proxy": "2.8.2",
