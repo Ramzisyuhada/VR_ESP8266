@@ -12,6 +12,7 @@ TagManager:
   - OutZone
   - SnapZone
   - Hand
+  - HandRoot
   layers:
   - Default
   - TransparentFX
@@ -35,7 +36,7 @@ TagManager:
   - 
   - Grabbable
   - Hand
-  - 
+  - HandRoot
   - 
   - 
   - 

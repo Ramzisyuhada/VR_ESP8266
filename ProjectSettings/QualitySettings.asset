@@ -89,12 +89,12 @@ QualitySettings:
     streamingMipmapsRenderersPerFrame: 512
     streamingMipmapsMaxLevelReduction: 2
     streamingMipmapsMaxFileIORequests: 1024
-    particleRaycastBudget: 4096
+    particleRaycastBudget: 4
     asyncUploadTimeSlice: 2
     asyncUploadBufferSize: 16
     asyncUploadPersistentBuffer: 1
     resolutionScalingFixedDPIFactor: 1
-    customRenderPipeline: {fileID: 11400000, guid: 4548997664476874b9d63ebb244d9683,
+    customRenderPipeline: {fileID: 11400000, guid: 64e8632977f6d064b839e89b20ebb595,
       type: 2}
     terrainQualityOverrides: 0
     terrainPixelError: 1
