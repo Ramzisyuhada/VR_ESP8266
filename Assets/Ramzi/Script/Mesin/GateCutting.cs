@@ -144,7 +144,7 @@ public class GateCutting : Mesin
             SimulasiBenar = false;
             HeaderText.text = "Simulasi Gagal! Anda mengalami kecelakaan.";
             if (audioSalah != null) audioSalah.Play();
-
+            
             Debug.LogWarning("[GateCutting] 🚨 SIMULASI KECELAKAAN DI " + hitPos);
 
             if (darahVFXObj)
@@ -160,7 +160,7 @@ public class GateCutting : Mesin
 
             if (darahSFX)
                 darahSFX.Play();
-
+            wsRouter.KirimPesanKeClientTerpilih("TEST:ALL");
             // Opsional animasi darurat
             // Anim.SetTrigger("EmergencyStop");
         }

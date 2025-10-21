@@ -1,0 +1,132 @@
+[33mcommit 028117e4769145bebfd90011abf7790b1d480b21[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Mon Oct 20 10:06:26 2025 +0700
+
+    Selesai Untuk Simulasi
+
+[33mcommit a4f28443e5b648d9909690be195bf9f30729d924[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Mon Oct 20 03:37:10 2025 +0700
+
+    Selesai Untuk Simulasi
+
+[33mcommit ed05c58d3f3a5a007e5316d5cb4e177790652710[m[33m ([m[1;31morigin/master[m[33m)[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Fri Oct 17 01:42:26 2025 +0700
+
+    Mesin 2
+
+[33mcommit 687ca338f852e0cddc4506f2da17a1a989c928c4[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Thu Oct 16 01:10:45 2025 +0700
+
+    Simulasi Mesin 1
+
+[33mcommit 8694358a2327b69d63fd2f06bb182dd40814cf83[m
+Author: ICT1 <you@example.com>
+Date:   Thu Oct 9 11:45:49 2025 +0700
+
+    Menambahkan Object Velk Dan Rek
+
+[33mcommit 6b60a99f50bf52ee9fd7d5e313d8f89168159012[m
+Merge: a1bb6de fbf11d7
+Author: ICT1 <you@example.com>
+Date:   Thu Oct 9 10:52:29 2025 +0700
+
+    Conflict
+
+[33mcommit a1bb6de1464aaf28257115f579014e5e9c829806[m
+Author: ICT1 <you@example.com>
+Date:   Thu Oct 9 10:49:50 2025 +0700
+
+    Conflict
+
+[33mcommit fbf11d70248d3fbc130a2b4568a5e5d4401c61f4[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Thu Oct 9 03:19:57 2025 +0700
+
+    Animasi Mesin 1 Part1
+
+[33mcommit 339a03152a0d4c95e43d2c1e8dcceb32a35c9260[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Wed Oct 8 21:02:38 2025 +0700
+
+    Add Mesin1
+
+[33mcommit 248935c0f5b5b266795752547b18fb6aa31d2a5b[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Wed Oct 8 20:47:18 2025 +0700
+
+    Move FBX in Assets/Resources/Fbx to Git LFS
+
+[33mcommit db0de9bbddffc31dedb276c4196e20c5635b23c0[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Wed Oct 8 20:32:09 2025 +0700
+
+    Add Git LFS tracking for FBX files
+
+[33mcommit 45a02beec1059eca05b7abff110cd5140d1041db[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Thu Oct 2 01:25:27 2025 +0700
+
+    Revisi Map
+
+[33mcommit 09e241291e7da905d58cfa1725abdca08d4d85ac[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Sun Sep 7 21:19:11 2025 +0700
+
+    Tutorial Engine
+
+[33mcommit 9d8e1c9d3234c663941ed94fbf90e17d15e1e436[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Sat Sep 6 01:19:03 2025 +0700
+
+    Create Map
+
+[33mcommit d153320fff4be8a49b6aec9deab2bedd426663fe[m
+Author: ICT1 <you@example.com>
+Date:   Thu Jul 24 13:50:37 2025 +0700
+
+    Simulasi part 1
+
+[33mcommit 211784ddd5272d7b24c28937f9ee863a3cdfc61f[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Tue Jul 22 00:39:30 2025 +0700
+
+    3d Press
+
+[33mcommit 7dfe1a7959460c668654429947e723845be60159[m
+Author: ICT1 <you@example.com>
+Date:   Fri Jul 18 09:53:13 2025 +0700
+
+    WEbsocker
+
+[33mcommit e8f92c814b90bf1d12ebcc7d8e19e335cde4c0fd[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Thu Jul 17 15:59:16 2025 +0700
+
+    Web Socket
+
+[33mcommit 660a7bc447f449734a372801b50f13438147bf1c[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Sun Jul 13 16:07:18 2025 +0700
+
+    Mesing press
+
+[33mcommit c8cdb714c910b008cd087f41009da731a35be83c[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Sun Jul 6 22:33:26 2025 +0700
+
+    First Commit
+
+[33mcommit a97e9c130aaf435a0cbb5f3830d66753f6caa64f[m
+Author: Ramzisyuhada <ramzi.syuhada@mhs.itenas.ac.id>
+Date:   Sun Jul 6 22:28:41 2025 +0700
+
+    First Commit
+
+[33mcommit 1fbf3c25b10acd6bea4bcf63201e741a4923b626[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: Ramzisyuhada <130651405+Ramzisyuhada@users.noreply.github.com>
+Date:   Sun Jul 6 22:10:39 2025 +0700
+
+    Initial commit

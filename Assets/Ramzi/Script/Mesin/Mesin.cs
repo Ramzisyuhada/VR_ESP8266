@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class Mesin : MonoBehaviour
 {
+    public WsRouterClientNative wsRouter;
 
 
     protected bool isMesinOn;
