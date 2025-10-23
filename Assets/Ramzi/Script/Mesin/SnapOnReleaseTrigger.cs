@@ -38,7 +38,11 @@ public class SnapOnReleaseByDistance : MonoBehaviour
     public event Action<Transform> OnSnapped;
     public event Action OnUnsnapped;
     private bool isSnapped = false;
-    public bool IsSnapped => isSnapped;
+    public bool IsSnapped
+    {
+        get => isSnapped;
+        set => isSnapped = value;
+    }
 
     [Header("MeshCollider Convex Control")]
     public bool autoToggleConvex = true;

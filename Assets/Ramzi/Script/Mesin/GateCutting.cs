@@ -49,6 +49,7 @@ public class GateCutting : Mesin
     private void ResetPlatformTransform()
     {
         if (!platform) return;
+        wsRouter.KirimPesanKeClientTerpilih("benar");
 
         var t = platform.transform;
 
@@ -79,6 +80,8 @@ public class GateCutting : Mesin
         var rb = t.GetComponent<Rigidbody>();
         if (rb)
         {
+            rb.isKinematic = false;
+            rb.useGravity = true;
             rb.velocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
             rb.Sleep();
@@ -160,7 +163,7 @@ public class GateCutting : Mesin
 
             if (darahSFX)
                 darahSFX.Play();
-            wsRouter.KirimPesanKeClientTerpilih("TEST:ALL");
+            wsRouter.KirimPesanKeClientTerpilih("salah");
             // Opsional animasi darurat
             // Anim.SetTrigger("EmergencyStop");
         }
@@ -172,7 +175,7 @@ public class GateCutting : Mesin
         {
             _statetMesin = StatetMesin.Nyala;
             isMesinOn = true;
-            SuaraMesin.Play();
+           // SuaraMesin.Play();
         }
     }
 
@@ -353,7 +356,7 @@ public class GateCutting : Mesin
         SimulasiBenar = false;
         isMesinOn = false;
         _statetMesin = StatetMesin.None;
-
+      
         // 5️⃣ Reset animator (jika ada)
         if (Anim)
         {

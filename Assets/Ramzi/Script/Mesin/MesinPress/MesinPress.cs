@@ -120,6 +120,7 @@ public class MesinPress : Mesin
 
     public void AksiSalah()
     {
+        wsRouter.KirimPesanKeClientTerpilih("salah");
         if (Tangan) Tangan.SetActive(true);
         if (audioSalah) audioSalah.Play();
 
@@ -206,6 +207,7 @@ public class MesinPress : Mesin
     public void ResetSimulasi()
     {
         Debug.Log("[MesinPress] 🔄 Reset simulasi...");
+        wsRouter.KirimPesanKeClientTerpilih("benar");
 
         // Reset sensor (aktifkan kembali tangan yang dimatikan)
         if (sensor) sensor.ResetSensor();
@@ -237,7 +239,9 @@ public class MesinPress : Mesin
             {
                 var slot = KeySlot[i];
                 if (!slot) continue;
-
+                
+                slot.GetComponent<Rigidbody>().isKinematic = false;
+                slot.IsSnapped = false;
                 // Coba panggil API unsnap jika ada
                 try
                 {
