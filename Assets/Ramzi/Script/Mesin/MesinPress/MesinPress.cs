@@ -241,6 +241,8 @@ public class MesinPress : Mesin
                 if (!slot) continue;
                 
                 slot.GetComponent<Rigidbody>().isKinematic = false;
+                slot.GetComponent<Rigidbody>().useGravity = true;
+
                 slot.IsSnapped = false;
                 // Coba panggil API unsnap jika ada
                 try
