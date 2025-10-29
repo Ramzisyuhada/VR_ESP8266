@@ -7,7 +7,6 @@ public class KecelakaanManager : MonoBehaviour
 {
     public static KecelakaanManager Instance;
 
-    public SerialController serialController;
 
     [Header("Status Pemain")]
     public bool isMCBDimatikan;

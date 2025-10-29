@@ -1,5 +1,4 @@
-﻿using System.Runtime.Remoting.Messaging;
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Logika utama mesin GateCutting:
@@ -23,6 +22,8 @@ public class GateCutting : Mesin
 
     [Header("Platform (benda aman untuk cek pelumasan)")]
     [SerializeField] private SnapOnReleaseByDistance platform; // drag komponen snap milik Platform
+    [SerializeField] private SnapOnReleaseByDistance Velk; // drag komponen snap milik Platform
+
     private bool _platformSnapped;
 
     public bool PlatformSnapped => platform && platform.IsSnapped;
@@ -32,6 +33,8 @@ public class GateCutting : Mesin
 
     [Header("VFX & Audio")]
     [SerializeField] private GameObject darahVFXObj;
+    [SerializeField] private GameObject Oli;
+
     [SerializeField] private AudioSource darahSFX;     // opsional suara cipratan
     [SerializeField] private AudioSource audioAman;
     [SerializeField] private AudioSource audioSalah;
@@ -41,17 +44,25 @@ public class GateCutting : Mesin
     [SerializeField] private float uiAmanDuration = 2f; // durasi tampil (detik)
 
     // ===== Unity lifecycle =====
-
+    
     public bool SimulasiBenar;
     private Vector3 _platformStartPos;
     private Quaternion _platformStartRot;
     private Transform _platformStartParent;
+
+    private Vector3 _velkStartPos;
+    private Quaternion _velkStartRot;
+    private Transform _velkStartParent;
     private void ResetPlatformTransform()
     {
         if (!platform) return;
+        Oli.SetActive(false);
+
         wsRouter.KirimPesanKeClientTerpilih("benar");
 
         var t = platform.transform;
+
+        var t1 = Velk.transform;
 
         // 1) Kalau lagi di-pegangan Hurricane VR → lepas paksa
         //    (opsional; abaikan jika tidak pakai HVR)
@@ -78,15 +89,23 @@ public class GateCutting : Mesin
 
         // 3) Matikan gerak fisika sebelum dipindah
         var rb = t.GetComponent<Rigidbody>();
+        var rb1 = t1.GetComponent<Rigidbody>(); 
         if (rb)
         {
+            rb1.isKinematic = false;
+            rb1.velocity = Vector3.zero;
+            rb1.angularVelocity = Vector3.zero;
+            rb1.Sleep();
+            rb1.useGravity = true;
+
             rb.isKinematic = false;
             rb.useGravity = true;
             rb.velocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
             rb.Sleep();
         }
-
+        t1.SetParent(_velkStartParent, true);
+        t1.SetPositionAndRotation(_velkStartPos, _velkStartRot);
         // 4) Kembalikan parent, posisi, rotasi awal
         t.SetParent(_platformStartParent, true);
         t.SetPositionAndRotation(_platformStartPos, _platformStartRot);
@@ -193,6 +212,8 @@ public class GateCutting : Mesin
     {
         if (AudioCuttingSuara != null && _statetMesin == StatetMesin.BukaPintu)
         {
+            Oli.SetActive(true);
+
             _statetMesin = StatetMesin.Cutting;
             AudioCuttingSuara.Play();
             Anim.SetTrigger("Cutting");
@@ -278,6 +299,18 @@ public class GateCutting : Mesin
     private Vector3 PosisiVelkFirst;
     private void Start()
     {
+
+        if (Velk)
+        {
+            _velkStartPos = Velk.transform.position;
+            _velkStartRot = Velk.transform.rotation;
+            _velkStartParent = Velk.transform.parent;
+        }
+        else
+        {
+            Debug.LogWarning("[GateCutting] Platform belum di-assign di Inspector.");
+        }
+
         if (platform)
         {
             _platformStartPos = platform.transform.position;

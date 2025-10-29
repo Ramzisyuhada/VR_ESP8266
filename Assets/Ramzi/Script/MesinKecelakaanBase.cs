@@ -1,12 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.IO.Ports;
 using UnityEngine;
 
 public abstract class MesinKecelakaanBase : MonoBehaviour, IMesinKecelakaan
 {
 
-    public SerialController Arduino; 
     public string namaMesin;
     public abstract void CekKondisi();
     public abstract void TriggerKecelakaan();
