@@ -6,9 +6,20 @@ using UnityEngine;
 using UnityEngine.UI;
 using NativeWebSocket;
 using TMPro;
+using System.Net.Sockets;
+using System.Text;
 
 public class WsRouterClientNative : MonoBehaviour
 {
+    // ================== UDP Discovery ==================
+    [Header("UDP")]
+    private UdpClient udpListener;
+    private bool udpRunning = false;
+    private bool serverDiscovered = false;        // ✅ supaya tidak connect berkali-kali dari UDP
+    public int udpListenPort = 4210;              // harus sama dgn server Python
+    public bool autoConnectWhenDiscovered = true;
+    public Button btnUdpScan;                     // tombol di UI buat start/stop UDP
+
     [Header("Server WebSocket (default)")]
     public string serverHost = "192.168.1.23";
     public int serverPort = 8765;
@@ -23,19 +34,19 @@ public class WsRouterClientNative : MonoBehaviour
     public Button btnRefresh;
     public Button btnSendToID;
     public Button btnSendToIP;
-    public Button btnPairWithSelected;   // tombol untuk connect antar client (PAIR)
+    public Button btnPairWithSelected;
 
     [Header("UI - Client List & Message")]
     public TMP_Dropdown clientsDropdown;
     public TMP_InputField messageInput;
 
     [Header("UI - Status Text (debug/status)")]
-    public TMP_Text statusText;          // tampil di panel yang aktif (termasuk ClientStatusText)
+    public TMP_Text statusText;
 
     [Header("Panels")]
-    public GameObject ParentIpDanPort;   // Panel input server (IP/Port)
-    public GameObject ParentStatusText;  // Panel "Menghubungkan..." / reconnect
-    public GameObject ClientStatusText;  // Panel setelah connect (daftar client, tombol pair, dsb)
+    public GameObject ParentIpDanPort;   // form awal
+    public GameObject ParentStatusText;  // "menghubungkan..." / scan
+    public GameObject ClientStatusText;  // sudah connect
 
     [Header("Opsi")]
     public bool hideSelfInLists = true;
@@ -56,11 +67,9 @@ public class WsRouterClientNative : MonoBehaviour
     private readonly Dictionary<string, ClientDetail> clientsByIp = new();
     private readonly List<string> dropdownIndexToIp = new();
 
-    private Coroutine currentTransition;
     private Coroutine reconnectCo;
     private Coroutine heartbeatCo;
 
-    // PlayerPrefs keys
     const string PREF_IP_KEY = "WsRouter_LastIP";
     const string PREF_PORT_KEY = "WsRouter_LastPort";
 
@@ -71,16 +80,14 @@ public class WsRouterClientNative : MonoBehaviour
         public string id = "-";
     }
 
-    // ====== CONNECT-on-pair state ======
     private string _pairedIp = null;
     private string _pairedId = null;
     private bool _connectSent = false;
-
-    // simpan pilihan terakhir ketika klik Pair (supaya tahu target saat balasan PAIR_OK tiba)
     private string _lastPickIp = null;
     private string _lastPickId = null;
 
-    // Expose opsional buat script lain
+    private bool isConnecting = false;    // ✅ cegah double connect
+
     public bool IsConnected => ws != null && ws.State == WebSocketState.Open;
     public bool HasActiveTarget => !string.IsNullOrEmpty(_pairedId) || !string.IsNullOrEmpty(_pairedIp);
 
@@ -96,7 +103,7 @@ public class WsRouterClientNative : MonoBehaviour
 
         WireButtons();
 
-        // State awal UI
+        // state awal
         ShowPanel_Input();
         SetStatus("Masukkan IP & Port server untuk mulai koneksi.");
 
@@ -111,7 +118,132 @@ public class WsRouterClientNative : MonoBehaviour
 #endif
     }
 
-    void OnDestroy() => _ = SafeClose();
+    void OnDestroy()
+    {
+        _ = SafeClose();
+        StopUdpDiscovery();
+    }
+
+    void OnApplicationQuit()
+    {
+        ReadInputsIntoDefaults();
+        SaveServerPrefs();
+        StopUdpDiscovery();
+    }
+
+    // ================== Panel Helpers ==================
+    void ShowPanel_Input()
+    {
+        if (ParentIpDanPort) ParentIpDanPort.SetActive(true);
+        if (ParentStatusText) ParentStatusText.SetActive(false);
+        if (ClientStatusText) ClientStatusText.SetActive(false);
+    }
+
+    void ShowPanel_Connecting(string status = "🔌 Menghubungkan ke server...")
+    {
+        if (ParentIpDanPort) ParentIpDanPort.SetActive(false);
+        if (ParentStatusText) ParentStatusText.SetActive(true);
+        if (ClientStatusText) ClientStatusText.SetActive(false);
+        SetStatus(status);
+    }
+
+    void ShowPanel_Client()
+    {
+        if (ParentIpDanPort) ParentIpDanPort.SetActive(false);
+        if (ParentStatusText) ParentStatusText.SetActive(false);
+        if (ClientStatusText) ClientStatusText.SetActive(true);
+    }
+
+    // ================== UDP ==================
+    private void HandleUdpDiscovery(string msg)
+    {
+        // server kirim: "WS:192.168.1.xx:8765"
+        if (!msg.StartsWith("WS:")) return;
+
+        // ✅ kalau sudah pernah dapat 1x, jangan proses lagi
+        if (serverDiscovered) return;
+        serverDiscovered = true;
+
+        var parts = msg.Split(':');
+        if (parts.Length < 3) return;
+
+        string ip = parts[1].Trim();
+        string portStr = parts[2].Trim();
+
+        if (!int.TryParse(portStr, out int port)) return;
+
+        // isi ke input
+        serverHost = ip;
+        serverPort = port;
+        if (ipInput) ipInput.text = ip;
+        if (portInput) portInput.text = port.ToString();
+        SaveServerPrefs();
+
+        // ✅ sudah ketemu → hentikan UDP supaya ga spam connect
+        StopUdpDiscovery();
+
+        ShowPanel_Connecting($"📡 Ditemukan server lewat UDP: {ip}:{port} → mencoba connect...");
+
+        if (autoConnectWhenDiscovered)
+            _ = Connect();
+    }
+
+    private async Task UdpListenLoop()
+    {
+        while (udpRunning)
+        {
+            try
+            {
+                var result = await udpListener.ReceiveAsync();
+                string text = Encoding.UTF8.GetString(result.Buffer).Trim();
+                HandleUdpDiscovery(text);
+            }
+            catch (ObjectDisposedException)
+            {
+                break; // socket ditutup
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[UDP] Error receive: " + ex.Message);
+            }
+        }
+    }
+
+    void StartUdpDiscovery()
+    {
+        // kalau lagi jalan → klik lagi buat stop
+        if (udpRunning)
+        {
+            StopUdpDiscovery();
+            SetStatus("🛑 Pencarian UDP dihentikan.");
+            ShowPanel_Input();
+            return;
+        }
+
+        try
+        {
+            serverDiscovered = false;       // boleh cari lagi
+            udpListener = new UdpClient(udpListenPort);
+            udpListener.EnableBroadcast = true;
+            udpRunning = true;
+            _ = UdpListenLoop();
+
+            ShowPanel_Connecting($"📡 Menyimak broadcast UDP di port {udpListenPort}...");
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"❌ Gagal mulai UDP: {ex.Message}");
+            udpRunning = false;
+            ShowPanel_Input();
+        }
+    }
+
+    void StopUdpDiscovery()
+    {
+        udpRunning = false;
+        try { udpListener?.Close(); } catch { }
+        udpListener = null;
+    }
 
     // ================== Wiring Buttons ==================
     void WireButtons()
@@ -123,12 +255,13 @@ public class WsRouterClientNative : MonoBehaviour
             await Connect();
         });
 
+        if (btnUdpScan) btnUdpScan.onClick.AddListener(StartUdpDiscovery);
+
         if (btnRefresh) btnRefresh.onClick.AddListener(RequestClients);
         if (btnSendToID) btnSendToID.onClick.AddListener(SendToSelectedID);
         if (btnSendToIP) btnSendToIP.onClick.AddListener(SendToSelectedIP);
         if (btnPairWithSelected) btnPairWithSelected.onClick.AddListener(PairWithSelected);
 
-        // Simpan otomatis saat selesai edit
         if (ipInput) ipInput.onEndEdit.AddListener(_ => { ReadInputsIntoDefaults(); SaveServerPrefs(); });
         if (portInput) portInput.onEndEdit.AddListener(_ => { ReadInputsIntoDefaults(); SaveServerPrefs(); });
     }
@@ -136,32 +269,44 @@ public class WsRouterClientNative : MonoBehaviour
     // ================== Connect Flow ==================
     public async Task Connect()
     {
+        // jangan connect 2x barengan
+        if (isConnecting)
+            return;
+
+        // kalau sudah connect, langsung tampilkan panel client
+        if (IsConnected)
+        {
+            ShowPanel_Client();
+            return;
+        }
+
+        isConnecting = true;
+
         await SafeClose();
 
         ReadInputsIntoDefaults();
         SaveServerPrefs();
 
-        // Panel "Connecting"
         ShowPanel_Connecting($"🔌 Menghubungkan ke ws://{serverHost}:{serverPort} ...");
 
         ws = new WebSocket($"ws://{serverHost}:{serverPort}");
 
         ws.OnOpen += () =>
         {
-            // reset pairing/flag setiap koneksi baru
+            isConnecting = false;
             _pairedIp = null; _pairedId = null; _connectSent = false;
 
-            // START heartbeat saat connected
             if (enableHeartbeat)
             {
                 if (heartbeatCo != null) StopCoroutine(heartbeatCo);
                 heartbeatCo = StartCoroutine(HeartbeatLoop());
             }
 
-            // Setelah berhasil open, delay 3 detik lalu tampilkan panel client
-            StartPanelTransition(DelayShowClientPanel(3f));
+            ShowPanel_Client();
+            _ = SendRaw("LISTCLIENTS");
+            SetStatus("✅ Terhubung ke server.");
 
-            // (Opsional) auto re-pair ke target terakhir
+            // auto re-pair
             if (!string.IsNullOrEmpty(_lastPickId))
             {
                 _ = SendRaw($"PAIRWITH:{_lastPickId}");
@@ -176,47 +321,45 @@ public class WsRouterClientNative : MonoBehaviour
 
         ws.OnClose += (code) =>
         {
+            isConnecting = false;
+            serverDiscovered = false;   // boleh scan UDP lagi
+
             _pairedIp = null; _pairedId = null; _connectSent = false;
 
-            // STOP heartbeat
             if (heartbeatCo != null) { StopCoroutine(heartbeatCo); heartbeatCo = null; }
-
-            SetStatus("⚠️ Koneksi terputus. Mencoba menghubungkan kembali...");
-            // Tampilkan panel status selama mencoba reconnect
-            if (ParentStatusText) ParentStatusText.SetActive(true);
-            if (ClientStatusText) ClientStatusText.SetActive(false);
-            if (ParentIpDanPort) ParentIpDanPort.SetActive(false);
 
             if (autoReconnect)
             {
+                ShowPanel_Connecting("⚠️ Koneksi terputus. Mencoba menghubungkan kembali...");
                 if (reconnectCo != null) StopCoroutine(reconnectCo);
                 reconnectCo = StartCoroutine(ReconnectLoop());
             }
             else
             {
-                StartPanelTransition(DelayShowDisconnectedPanel(3f));
+                SetStatus("⚠️ Koneksi terputus.");
+                ShowPanel_Input();
             }
         };
 
         ws.OnError += (err) =>
         {
+            isConnecting = false;
+            serverDiscovered = false;   // boleh scan UDP lagi
+
             _pairedIp = null; _pairedId = null; _connectSent = false;
 
             if (heartbeatCo != null) { StopCoroutine(heartbeatCo); heartbeatCo = null; }
 
-            SetStatus($"❌ Error: {err}. Mencoba menghubungkan kembali...");
-            if (ParentStatusText) ParentStatusText.SetActive(true);
-            if (ClientStatusText) ClientStatusText.SetActive(false);
-            if (ParentIpDanPort) ParentIpDanPort.SetActive(false);
-
             if (autoReconnect)
             {
+                ShowPanel_Connecting($"❌ Error: {err}. Mencoba menghubungkan kembali...");
                 if (reconnectCo != null) StopCoroutine(reconnectCo);
                 reconnectCo = StartCoroutine(ReconnectLoop());
             }
             else
             {
-                StartPanelTransition(DelayShowDisconnectedPanel(3f));
+                SetStatus($"❌ Error: {err}");
+                ShowPanel_Input();
             }
         };
 
@@ -232,19 +375,17 @@ public class WsRouterClientNative : MonoBehaviour
         }
         catch (Exception ex)
         {
-            SetStatus($"❌ Gagal terhubung: {ex.Message}. Mencoba ulang...");
+            isConnecting = false;
             if (autoReconnect)
             {
-                if (ParentStatusText) ParentStatusText.SetActive(true);
-                if (ClientStatusText) ClientStatusText.SetActive(false);
-                if (ParentIpDanPort) ParentIpDanPort.SetActive(false);
-
+                ShowPanel_Connecting($"❌ Gagal terhubung: {ex.Message}. Mencoba ulang...");
                 if (reconnectCo != null) StopCoroutine(reconnectCo);
                 reconnectCo = StartCoroutine(ReconnectLoop());
             }
             else
             {
-                StartPanelTransition(DelayShowDisconnectedPanel(3f));
+                SetStatus($"❌ Gagal terhubung: {ex.Message}");
+                ShowPanel_Input();
             }
         }
     }
@@ -258,74 +399,19 @@ public class WsRouterClientNative : MonoBehaviour
         }
     }
 
-    // ================== Panel Transitions ==================
-    void StartPanelTransition(IEnumerator routine)
-    {
-        if (currentTransition != null) StopCoroutine(currentTransition);
-        currentTransition = StartCoroutine(routine);
-    }
-
-    IEnumerator DelayShowClientPanel(float delaySec)
-    {
-        SetStatus("✅ Terhubung ke server! Menyiapkan tampilan...");
-        yield return new WaitForSeconds(delaySec);
-
-        if (ws != null && ws.State == WebSocketState.Open)
-        {
-            ShowPanel_Client();   // sembunyikan ParentStatusText, tampilkan ClientStatusText
-            _ = SendRaw("LISTCLIENTS");
-        }
-        currentTransition = null;
-    }
-
-    IEnumerator DelayShowDisconnectedPanel(float delaySec)
-    {
-        if (ParentStatusText) ParentStatusText.SetActive(true);
-        if (ClientStatusText) ClientStatusText.SetActive(false);
-
-        yield return new WaitForSeconds(delaySec);
-
-        ShowPanel_Input();
-        currentTransition = null;
-    }
-
-    void ShowPanel_Input()
-    {
-        if (ParentIpDanPort) ParentIpDanPort.SetActive(true);
-        if (ParentStatusText) ParentStatusText.SetActive(false);
-        if (ClientStatusText) ClientStatusText.SetActive(false);
-    }
-
-    void ShowPanel_Connecting(string status)
-    {
-        if (ParentIpDanPort) ParentIpDanPort.SetActive(false);
-        if (ParentStatusText) ParentStatusText.SetActive(true);
-        if (ClientStatusText) ClientStatusText.SetActive(false);
-        SetStatus(status);
-    }
-
-    void ShowPanel_Client()
-    {
-        if (ParentIpDanPort) ParentIpDanPort.SetActive(false);
-        if (ParentStatusText) ParentStatusText.SetActive(false);
-        if (ClientStatusText) ClientStatusText.SetActive(true);
-    }
-
     // ================== Reconnect & Heartbeat ==================
     private IEnumerator ReconnectLoop()
     {
         int attempt = 0;
 
-        if (ParentStatusText) ParentStatusText.SetActive(true);
-        if (ClientStatusText) ClientStatusText.SetActive(false);
-        if (ParentIpDanPort) ParentIpDanPort.SetActive(false);
+        ShowPanel_Connecting("🔁 Mencoba hubungkan ulang...");
 
         while (attempt < maxReconnectAttempts && !IsConnected)
         {
             attempt++;
             SetStatus($"🔁 Reconnect percobaan {attempt}/{maxReconnectAttempts} ...");
 
-            var _ = Connect(); // jalankan Connect flow
+            var _ = Connect();
 
             float wait = 0f;
             while (wait < reconnectIntervalSec)
@@ -349,9 +435,7 @@ public class WsRouterClientNative : MonoBehaviour
         if (!IsConnected)
         {
             SetStatus("⛔ Gagal menghubungkan kembali. Silakan cek IP/Port server.");
-            if (ParentIpDanPort) ParentIpDanPort.SetActive(true);
-            if (ParentStatusText) ParentStatusText.SetActive(false);
-            if (ClientStatusText) ClientStatusText.SetActive(false);
+            ShowPanel_Input();
         }
 
         reconnectCo = null;
@@ -362,7 +446,6 @@ public class WsRouterClientNative : MonoBehaviour
         var wait = new WaitForSeconds(heartbeatSec);
         while (IsConnected)
         {
-            // Fire-and-forget; bila gagal mengirim, SendRaw akan mencoba close dan OnClose akan memulai reconnect
             _ = SendRaw("PING");
             _ = SendRaw("LISTCLIENTS");
             yield return wait;
@@ -389,7 +472,6 @@ public class WsRouterClientNative : MonoBehaviour
             return;
         }
 
-        // Pairing feedback (kita yang request)
         if (msg.StartsWith("PAIR_OK:"))
         {
             var id = msg.Substring("PAIR_OK:".Length).Trim();
@@ -401,8 +483,7 @@ public class WsRouterClientNative : MonoBehaviour
             _connectSent = false;
             TrySendConnectOnce();
 
-            // Delay 3 detik sebelum sembunyikan panel Client
-            if (ClientStatusText) StartCoroutine(HideClientPanelAfterDelay(3f));
+            ShowPanel_Client();
             return;
         }
 
@@ -417,34 +498,7 @@ public class WsRouterClientNative : MonoBehaviour
             _connectSent = false;
             TrySendConnectOnce();
 
-            if (ClientStatusText) StartCoroutine(HideClientPanelAfterDelay(3f));
-            return;
-        }
-
-        // Partner pairing notifies us
-        if (msg.StartsWith("PAIR_OK_WITH"))
-        {
-            // contoh format: "PAIR_OK_WITH:<id>"
-            var parts = msg.Split(':');
-            if (parts.Length > 1)
-                _pairedId = string.IsNullOrWhiteSpace(parts[1]) ? _pairedId : parts[1].Trim();
-
-            _connectSent = false;
-            TrySendConnectOnce();
-            SetStatus($"ℹ️ Partner pairing (ID). CONNECT dikirim.");
-            return;
-        }
-
-        if (msg.StartsWith("PAIR_OK_WITH_IP"))
-        {
-            // contoh format: "PAIR_OK_WITH_IP:<ip>"
-            var parts = msg.Split(':');
-            if (parts.Length > 1)
-                _pairedIp = string.IsNullOrWhiteSpace(parts[1]) ? _pairedIp : parts[1].Trim();
-
-            _connectSent = false;
-            TrySendConnectOnce();
-            SetStatus($"ℹ️ Partner pairing (IP). CONNECT dikirim.");
+            ShowPanel_Client();
             return;
         }
 
@@ -454,16 +508,8 @@ public class WsRouterClientNative : MonoBehaviour
             return;
         }
 
-        // Pesan lain
+        // pesan lain tetap tampil, tapi ga ngubah panel
         SetStatus($"📨 {msg}");
-    }
-
-    private IEnumerator HideClientPanelAfterDelay(float delaySec)
-    {
-        yield return new WaitForSeconds(delaySec);
-        if (ParentStatusText) ParentStatusText.SetActive(false);
-        if (ClientStatusText) ClientStatusText.SetActive(false);
-        SetStatus("🔗 Berhasil Terhubung — Simulasi siap dimainkan.");
     }
 
     void ParseClientsPayload(string payload)
@@ -482,38 +528,6 @@ public class WsRouterClientNative : MonoBehaviour
 
             if (hideSelfInLists && ip == myIpFromServer) continue;
             clientsByIp[ip] = new ClientDetail { ip = ip, id = id };
-        }
-    }
-
-    public async void KirimPesanKeClientTerpilih(string pesan)
-    {
-        if (string.IsNullOrWhiteSpace(pesan))
-        {
-            SetStatus("⚠️ Pesan kosong, tidak dikirim.");
-            return;
-        }
-
-        if (!EnsureConnected())
-        {
-            SetStatus("⛔ Tidak terhubung ke server, pesan gagal dikirim.");
-            return;
-        }
-
-        if (!TryGetSelected(out var ip, out var cd))
-        {
-            SetStatus("⚠️ Belum ada client yang dipilih.");
-            return;
-        }
-
-        if (!string.IsNullOrEmpty(cd.id) && cd.id != "-")
-        {
-            await SendRaw($"TOID:{cd.id}|{pesan}");
-            SetStatus($"📨 Pesan '{pesan}' dikirim ke ID {cd.id}");
-        }
-        else
-        {
-            await SendRaw($"TOIP:{ip}|{pesan}");
-            SetStatus($"📨 Pesan '{pesan}' dikirim ke {ip}");
         }
     }
 
@@ -546,7 +560,8 @@ public class WsRouterClientNative : MonoBehaviour
         if (statusText)
         {
             statusText.text = s;
-            if (!statusText.gameObject.activeSelf) statusText.gameObject.SetActive(true);
+            if (!statusText.gameObject.activeSelf)
+                statusText.gameObject.SetActive(true);
         }
         Debug.Log(s);
     }
@@ -559,7 +574,7 @@ public class WsRouterClientNative : MonoBehaviour
         if (!EnsureConnected()) return;
         if (!TryGetSelected(out var ip, out var cd)) return;
         var msg = messageInput?.text.Trim();
-        if (string.IsNullOrEmpty(msg)) { SetStatus("Pesan kosong."); return; }
+        if (string.IsNullOrEmpty(msg)) { SetStatus("⚠️ Pesan kosong."); return; }
 
         if (!string.IsNullOrEmpty(cd.id) && cd.id != "-")
         {
@@ -578,7 +593,7 @@ public class WsRouterClientNative : MonoBehaviour
         if (!EnsureConnected()) return;
         if (!TryGetSelected(out var ip, out _)) return;
         var msg = messageInput?.text.Trim();
-        if (string.IsNullOrEmpty(msg)) { SetStatus("Pesan kosong."); return; }
+        if (string.IsNullOrEmpty(msg)) { SetStatus("⚠️ Pesan kosong."); return; }
 
         _ = SendRaw($"TOIP:{ip}|{msg}");
         SetStatus($"📨 Dikirim ke {ip}");
@@ -589,11 +604,9 @@ public class WsRouterClientNative : MonoBehaviour
         if (!EnsureConnected()) return;
         if (!TryGetSelected(out var ip, out var cd)) return;
 
-        // simpan pilihan terakhir
         _lastPickIp = ip;
         _lastPickId = (!string.IsNullOrEmpty(cd.id) && cd.id != "-") ? cd.id : null;
 
-        // ganti pasangan => izinkan "connect" terkirim lagi
         _connectSent = false;
 
         if (!string.IsNullOrEmpty(cd.id) && cd.id != "-")
@@ -613,13 +626,15 @@ public class WsRouterClientNative : MonoBehaviour
         ip = null; cd = null;
         if (clientsDropdown == null || dropdownIndexToIp.Count == 0)
         {
-            SetStatus("Daftar klien kosong."); return false;
+            SetStatus("Daftar klien kosong.");
+            return false;
         }
 
         int idx = clientsDropdown.value;
         if (idx < 0 || idx >= dropdownIndexToIp.Count)
         {
-            SetStatus("Pilih salah satu klien."); return false;
+            SetStatus("Pilih salah satu klien.");
+            return false;
         }
 
         ip = dropdownIndexToIp[idx];
@@ -632,15 +647,17 @@ public class WsRouterClientNative : MonoBehaviour
         if (ws == null || ws.State != WebSocketState.Open)
         {
             SetStatus("⛔ Belum terhubung ke server.");
+            ShowPanel_Input();
             return false;
         }
         return true;
     }
 
+    // ================== Send ==================
     async Task SendRaw(string text)
     {
         if (ws == null || ws.State != WebSocketState.Open)
-            throw new InvalidOperationException("WS not open");
+            return; // ❗ jgn throw dan jgn close socket lagi
 
         try
         {
@@ -650,9 +667,7 @@ public class WsRouterClientNative : MonoBehaviour
         catch (Exception ex)
         {
             Debug.LogWarning("[WS->SRV] send failed: " + ex.Message);
-            // Paksa close supaya OnClose terpanggil → ReconnectLoop aktif
-            try { await ws.Close(); } catch { }
-            throw;
+            // ❗ TIDAK close di sini, biarkan OnClose yg alami
         }
     }
 
@@ -663,7 +678,6 @@ public class WsRouterClientNative : MonoBehaviour
         if (!IsConnected) return;
         if (!HasActiveTarget) return;
 
-        // prioritas kirim ke ID; fallback IP
         if (!string.IsNullOrEmpty(_pairedId))
         {
             await SendRaw($"TOID:{_pairedId}|connect");
@@ -676,15 +690,6 @@ public class WsRouterClientNative : MonoBehaviour
         }
 
         _connectSent = true;
-    }
-
-    /// <summary>
-    /// API publik: bila ada script lain ingin memicu ulang pengiriman 'connect' (jika siap).
-    /// </summary>
-    public void SendConnectIfReadyFromOther()
-    {
-        _connectSent = false;   // izinkan kirim lagi
-        TrySendConnectOnce();
     }
 
     // ================== Prefs ==================
@@ -719,9 +724,35 @@ public class WsRouterClientNative : MonoBehaviour
         Debug.Log($"[Prefs] Loaded IP={serverHost}, Port={serverPort}");
     }
 
-    void OnApplicationQuit()
+    public async void KirimPesanKeClientTerpilih(string pesan)
     {
-        ReadInputsIntoDefaults();
-        SaveServerPrefs();
+        if (string.IsNullOrWhiteSpace(pesan))
+        {
+            SetStatus("⚠️ Pesan kosong, tidak dikirim.");
+            return;
+        }
+
+        if (!EnsureConnected())
+        {
+            SetStatus("⛔ Tidak terhubung ke server, pesan gagal dikirim.");
+            return;
+        }
+
+        if (!TryGetSelected(out var ip, out var cd))
+        {
+            SetStatus("⚠️ Belum ada client yang dipilih.");
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(cd.id) && cd.id != "-")
+        {
+            await SendRaw($"TOID:{cd.id}|{pesan}");
+            SetStatus($"📨 Pesan '{pesan}' dikirim ke ID {cd.id}");
+        }
+        else
+        {
+            await SendRaw($"TOIP:{ip}|{pesan}");
+            SetStatus($"📨 Pesan '{pesan}' dikirim ke {ip}");
+        }
     }
 }

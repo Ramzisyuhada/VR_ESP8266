@@ -14,6 +14,9 @@ public class CuttingProximitySensor : MonoBehaviour
 
     private float _nextAllowed;
 
+
+    public bool CekOli;
+
     private void Reset()
     {
         var c = GetComponent<Collider>();
@@ -45,7 +48,14 @@ public class CuttingProximitySensor : MonoBehaviour
             //else
                 mesin.SimulasiKecelakaan(hitPos, other.transform); // 👉 jadikan child sensor
             return;
+        }else if (other.CompareTag("MasterPlat"))
+        {
+            CekOli = true;
+
+            other.transform.GetChild(1).gameObject.SetActive(true);
+            mesin.AksiBenar_CekPelumasan();
         }
+
 
         // 2) Jika yang masuk adalah PLATFORM (atau bagian-bagiannya) — biarkan saja
         if (platform && (other.gameObject == platform.gameObject || other.transform.IsChildOf(platform.transform)))
