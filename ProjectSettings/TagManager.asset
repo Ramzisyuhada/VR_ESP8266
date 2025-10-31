@@ -13,6 +13,7 @@ TagManager:
   - SnapZone
   - Hand
   - HandRoot
+  - MasterPlat
   layers:
   - Default
   - TransparentFX
@@ -24,7 +25,7 @@ TagManager:
   - 
   - PostProcessing
   - DynamicPose
-  - 
+  - MasterPlat
   - 
   - 
   - 

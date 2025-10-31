@@ -21,15 +21,17 @@ public class GateCutting : Mesin
     [SerializeField] private float ambangJarakBahaya = 0.05f; // meter
 
     [Header("Platform (benda aman untuk cek pelumasan)")]
-    [SerializeField] private SnapOnReleaseByDistance platform; // drag komponen snap milik Platform
+    [SerializeField] private GameObject platform; // drag komponen snap milik Platform
     [SerializeField] private SnapOnReleaseByDistance Velk; // drag komponen snap milik Platform
 
     private bool _platformSnapped;
 
-    public bool PlatformSnapped => platform && platform.IsSnapped;
 
     private enum StatetMesin { None, BukaPintu, Nyala, Cutting, Turun }
+    private enum StatetSimulasi { None,Gagal, Benar }
+
     [SerializeField] private StatetMesin _statetMesin = StatetMesin.None;
+    [SerializeField] private StatetSimulasi _statetSimulasi = StatetSimulasi.None;
 
     [Header("VFX & Audio")]
     [SerializeField] private GameObject darahVFXObj;
@@ -43,8 +45,10 @@ public class GateCutting : Mesin
     [SerializeField] private GameObject uiAman;        // drag image atau panel “Aman”
     [SerializeField] private float uiAmanDuration = 2f; // durasi tampil (detik)
 
+    [Header("Cek Oli")]
+    [SerializeField] private CuttingProximitySensor CuttingSensor;
     // ===== Unity lifecycle =====
-    
+
     public bool SimulasiBenar;
     private Vector3 _platformStartPos;
     private Quaternion _platformStartRot;
@@ -56,6 +60,8 @@ public class GateCutting : Mesin
     private void ResetPlatformTransform()
     {
         if (!platform) return;
+        platform.transform.GetChild(1).gameObject.SetActive(false);
+
         Oli.SetActive(false);
 
         wsRouter.KirimPesanKeClientTerpilih("benar");
@@ -125,20 +131,12 @@ public class GateCutting : Mesin
     }
     private void OnEnable()
     {
-        if (platform)
-        {
-            platform.OnSnapped += OnPlatformSnapped;
-            platform.OnUnsnapped += OnPlatformUnsnapped;
-        }
+        
     }
 
     private void OnDisable()
     {
-        if (platform)
-        {
-            platform.OnSnapped -= OnPlatformSnapped;
-            platform.OnUnsnapped -= OnPlatformUnsnapped;
-        }
+      
     }
 
     // ===== Platform events =====
@@ -161,6 +159,8 @@ public class GateCutting : Mesin
     {
         if (SawAktif())
         {
+            _statetSimulasi = StatetSimulasi.Gagal;
+
             Pemberitahuan.SetActive(true);
 
             SimulasiBenar = false;
@@ -190,7 +190,7 @@ public class GateCutting : Mesin
     // ===== API publik =====
     public void OnMesin() {
 
-        if (SuaraMesin != null && Anim != null && _statetMesin == StatetMesin.None)
+        if (SuaraMesin != null && Anim != null && _statetMesin == StatetMesin.None && _statetSimulasi != StatetSimulasi.Gagal)
         {
             _statetMesin = StatetMesin.Nyala;
             isMesinOn = true;
@@ -200,7 +200,7 @@ public class GateCutting : Mesin
 
     public void BukaPintu()
     {
-        if (AudioBukaPintuSuara != null && _statetMesin == StatetMesin.Nyala)
+        if (AudioBukaPintuSuara != null && _statetMesin == StatetMesin.Nyala && _statetSimulasi != StatetSimulasi.Gagal)
         {
             _statetMesin = StatetMesin.BukaPintu;
             Anim.SetTrigger("BukaPintu");
@@ -210,7 +210,7 @@ public class GateCutting : Mesin
 
     public void CuttingNyala()
     {
-        if (AudioCuttingSuara != null && _statetMesin == StatetMesin.BukaPintu)
+        if (AudioCuttingSuara != null && _statetMesin == StatetMesin.BukaPintu && _statetSimulasi != StatetSimulasi.Gagal)
         {
             Oli.SetActive(true);
 
@@ -222,7 +222,7 @@ public class GateCutting : Mesin
 
     public void Turun()
     {
-        if (_statetMesin == StatetMesin.Cutting)
+        if (_statetMesin == StatetMesin.Cutting && _statetSimulasi == StatetSimulasi.Benar)
         {
             _statetMesin = StatetMesin.Turun;
             Anim.SetTrigger("Turun");
@@ -238,7 +238,7 @@ public class GateCutting : Mesin
             if (SimulasiBenar)
             {
                 HeaderText.text = "Simulasi Benar! Selamat, Anda tidak mengalami kecelakaan.";
-                if (audioAman != null) audioAman.Play();
+              //  if (audioAman != null) audioAman.Play();
             }
         }
         else
@@ -258,8 +258,9 @@ public class GateCutting : Mesin
     /// </summary>
     public void AksiBenar_CekPelumasan()
     {
-        if (PlatformSnapped && SawAktif())
+        if (SawAktif() && CuttingSensor.CekOli)
         {
+            _statetSimulasi = StatetSimulasi.Benar;
             if (audioAman)
                 audioAman.Play();  // 🔊 mainkan suara aman
 
@@ -284,6 +285,7 @@ public class GateCutting : Mesin
         if (SawAktif())
         {
             Debug.LogWarning("[GateCutting] 🚨 SIMULASI KECELAKAAN TERPICU!");
+
             // Hentikan mesin / anim:
             // Anim.SetTrigger("EmergencyStop");
             // Suara alarm:
