@@ -6,9 +6,18 @@ using UnityEngine;
 using UnityEngine.UI;
 using NativeWebSocket;
 using TMPro;
+using System.Net.Sockets;
+using System.Net;
+using System.Text;
 
 public class WsRouterClientNative : MonoBehaviour
 {
+    [Header("UDP Auto-Discovery")]
+    public bool enableUdpDiscovery = true;
+    public int udpListenPort = 4210;     // harus sama dgn server Python
+    public float udpWaitTimeout = 5f;    // berapa detik nunggu broadcast
+
+
     [Header("Server WebSocket (default)")]
     public string serverHost = "192.168.1.23";
     public int serverPort = 8765;
@@ -24,6 +33,8 @@ public class WsRouterClientNative : MonoBehaviour
     public Button btnSendToID;
     public Button btnSendToIP;
     public Button btnPairWithSelected;   // tombol untuk connect antar client (PAIR)
+    public Button btnAutoConnect;   // <<=== TOMBOL BARU
+
 
     [Header("UI - Client List & Message")]
     public TMP_Dropdown clientsDropdown;
@@ -114,6 +125,91 @@ public class WsRouterClientNative : MonoBehaviour
     void OnDestroy() => _ = SafeClose();
 
     // ================== Wiring Buttons ==================
+
+    IEnumerator UdpAutoConnectRoutine()
+    {
+        if (!enableUdpDiscovery)
+        {
+            SetStatus("UDP discovery dimatikan.");
+            yield break;
+        }
+
+        SetStatus($"🔎 Mencari server lewat UDP di port {udpListenPort} ...");
+
+        bool got = false;
+        string foundIp = null;
+        int foundPort = 0;
+
+        // kita jalanin di thread lain supaya gak nge-freeze Unity
+        var done = false;
+
+        // buat thread UDP
+        System.Threading.Thread t = new System.Threading.Thread(() =>
+        {
+            try
+            {
+                UdpClient udp = new UdpClient(udpListenPort);
+                udp.Client.ReceiveTimeout = (int)(udpWaitTimeout * 1000);
+
+                IPEndPoint remote = new IPEndPoint(IPAddress.Any, 0);
+                byte[] data = udp.Receive(ref remote);     // blocking
+                string msg = Encoding.UTF8.GetString(data).Trim();
+
+                // contoh pesan: "WS:192.168.1.23:8765"
+                if (msg.StartsWith("WS:"))
+                {
+                    string body = msg.Substring(3);
+                    string[] parts = body.Split(':');
+                    if (parts.Length >= 2)
+                    {
+                        foundIp = parts[0].Trim();
+                        int.TryParse(parts[1].Trim(), out foundPort);
+                        got = true;
+                    }
+                }
+
+                udp.Close();
+            }
+            catch (Exception e)
+            {
+                Debug.Log("[UDP DISCOVERY] error: " + e.Message);
+            }
+            finally
+            {
+                done = true;
+            }
+        });
+
+        t.IsBackground = true;
+        t.Start();
+
+        float tmr = 0f;
+        while (!done && tmr < udpWaitTimeout)
+        {
+            tmr += Time.deltaTime;
+            yield return null;
+        }
+
+        if (!got)
+        {
+            SetStatus("⛔ Tidak ada broadcast server yang diterima.");
+            yield break;
+        }
+
+        // kalau dapet
+        SetStatus($"✅ Ketemu server: {foundIp}:{foundPort} — menghubungkan...");
+
+        // masukin ke input & variabel
+        serverHost = foundIp;
+        serverPort = foundPort;
+        if (ipInput) ipInput.text = foundIp;
+        if (portInput) portInput.text = foundPort.ToString();
+        SaveServerPrefs();
+
+        // langsung connect
+        yield return Connect();
+    }
+
     void WireButtons()
     {
         if (btnConnect) btnConnect.onClick.AddListener(async () =>
@@ -123,15 +219,22 @@ public class WsRouterClientNative : MonoBehaviour
             await Connect();
         });
 
+        // >>> tombol auto connect yg nyari IP server via UDP
+        if (btnAutoConnect) btnAutoConnect.onClick.AddListener(() =>
+        {
+            // jalanin coroutine discovery
+            StartCoroutine(UdpAutoConnectRoutine());
+        });
+
         if (btnRefresh) btnRefresh.onClick.AddListener(RequestClients);
         if (btnSendToID) btnSendToID.onClick.AddListener(SendToSelectedID);
         if (btnSendToIP) btnSendToIP.onClick.AddListener(SendToSelectedIP);
         if (btnPairWithSelected) btnPairWithSelected.onClick.AddListener(PairWithSelected);
 
-        // Simpan otomatis saat selesai edit
         if (ipInput) ipInput.onEndEdit.AddListener(_ => { ReadInputsIntoDefaults(); SaveServerPrefs(); });
         if (portInput) portInput.onEndEdit.AddListener(_ => { ReadInputsIntoDefaults(); SaveServerPrefs(); });
     }
+
 
     // ================== Connect Flow ==================
     public async Task Connect()
