@@ -24,7 +24,8 @@ namespace UnityStandardAssets.ImageEffects
 
 
         // To maintain adaptation levels over time, we need two 1x1 render textures
-        // and ping-pong between them.
+        // and
+        // -pong between them.
         private RenderTexture[] adaptRenderTex = new RenderTexture[2];
         private int curAdaptIndex = 0;
 

@@ -61,7 +61,7 @@ public class GateCutting : Mesin
     {
         if (!platform) return;
         platform.transform.GetChild(1).gameObject.SetActive(false);
-
+        _statetSimulasi = StatetSimulasi.None;
         Oli.SetActive(false);
 
         wsRouter.KirimPesanKeClientTerpilih("benar");
