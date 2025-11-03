@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SnapVelk : SnapOnReleaseByDistance
+public class SnapVelk : SnapBase
 {
     // Start is called before the first frame update
     void Start()

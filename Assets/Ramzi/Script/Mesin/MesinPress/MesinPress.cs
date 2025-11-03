@@ -8,14 +8,15 @@ using UnityEngine.Animations.Rigging;
 public class MesinPress : Mesin
 {
     [Header("VFX & Audio")]
-    [SerializeField] private GameObject Tangan;
+    [SerializeField] private GameObject DarahSfx;
     [SerializeField] private AudioSource darahSFX;
     [SerializeField] private AudioSource audioAman;
     [SerializeField] private AudioSource AudioMesin;
     [SerializeField] private AudioSource AudioAlarmKecelakaan;
     [SerializeField] private AudioSource audioSalah;
+    [SerializeField] private AudioSource audioAbaaba;
 
-    private enum StatetMesin { None, TopPlateUp, Nyala, CylinderForward, Simulasi }
+    private enum StatetMesin { None, DorongMesinUtama,TopPlateUp, Nyala, CylinderForward, Simulasi }
     [SerializeField] private StatetMesin _statetMesin = StatetMesin.None;
 
     [Header("Npc")]
@@ -31,7 +32,7 @@ public class MesinPress : Mesin
     private PressSensor sensor;
 
     // Slot snap & objek sebelum dipasang ke slot
-    public SnapOnReleaseByDistance[] KeySlot;
+    public SnapBase[] KeySlot;
     public GameObject[] SebelumKeySlot; // objek kunci sebelum dipasang
 
     [Header("Input Controller")]
@@ -50,6 +51,12 @@ public class MesinPress : Mesin
     // (opsional) freeze physics setelah reset
     [SerializeField] private float postResetFrozenSec = 0f;
 
+
+    [Header("Misi")]
+    [SerializeField] PushPositionLimit MesinUtama;
+
+    [Header("UI")]
+    [SerializeField] GameObject UiNpc;
     private void Awake()
     {
         if (mesh != null)
@@ -121,7 +128,7 @@ public class MesinPress : Mesin
     public void AksiSalah()
     {
         wsRouter.KirimPesanKeClientTerpilih("salah");
-        if (Tangan) Tangan.SetActive(true);
+        if (DarahSfx) DarahSfx.SetActive(true);
         if (audioSalah) audioSalah.Play();
 
         if (HeaderText) HeaderText.text = "Simulasi Gagal! Anda mengalami kecelakaan.";
@@ -155,7 +162,13 @@ public class MesinPress : Mesin
                 AksiSalah();
         }
     }
-
+    public void MendorongMesinUtama()
+    {
+        if (_statetMesin == StatetMesin.None)
+        {
+            _statetMesin = StatetMesin.DorongMesinUtama;
+        }
+    }
     public void CylinderForward()
     {
         if (AudioMesin != null && _statetMesin == StatetMesin.CylinderForward)
@@ -171,7 +184,7 @@ public class MesinPress : Mesin
     public void OnTopPlateUpFinished()
     {
         Debug.Log("Animasi TopPlateUp selesai ✅");
-        if (AudioMesin != null)
+        if (AudioMesin != null && _statetMesin == StatetMesin.TopPlateUp)
         {
             _statetMesin = StatetMesin.CylinderForward;
             AudioMesin.Play();
@@ -185,7 +198,7 @@ public class MesinPress : Mesin
     {
         if (_statetMesin == StatetMesin.None)
         {
-            _statetMesin = StatetMesin.Nyala;
+            _statetMesin = StatetMesin.TopPlateUp;
             var rig = PosisiNpc ? PosisiNpc.GetComponent<RigBuilder>() : null;
             if (rig) rig.enabled = true;
             AnimNpc?.SetTrigger("TopPlateUp");
@@ -197,10 +210,19 @@ public class MesinPress : Mesin
         bool primaryPressed = OculusInputMap != null &&
                               (OculusInputMap.LeftPrimaryButtonState.Active || OculusInputMap.RightPrimaryButtonState.Active);
 
+        
+
         if (primaryPressed && _statetMesin == StatetMesin.CylinderForward)
         {
+            audioAbaaba.Play();
             CylinderForward();
             SimulasiKecelakaan();
+        }
+
+        if (MesinUtama.IsLimit && _statetMesin == StatetMesin.None)
+        {
+            _statetMesin = StatetMesin.DorongMesinUtama;
+            UiNpc.SetActive(true);
         }
     }
 
@@ -210,7 +232,7 @@ public class MesinPress : Mesin
         wsRouter.KirimPesanKeClientTerpilih("benar");
 
         // Reset sensor (aktifkan kembali tangan yang dimatikan)
-        if (sensor) sensor.ResetSensor();
+        if (DarahSfx) DarahSfx.SetActive(false);
 
         // 1) Matikan semua audio
         if (AudioMesin && AudioMesin.isPlaying) AudioMesin.Stop();
@@ -220,7 +242,7 @@ public class MesinPress : Mesin
         if (audioSalah && audioSalah.isPlaying) audioSalah.Stop();
 
         // 2) Reset VFX/mesh & UI
-        if (Tangan) Tangan.SetActive(false);
+        if (DarahSfx) DarahSfx.SetActive(false);
         if (mesh) mesh.SetActive(false);
         if (Pemberitahuan) Pemberitahuan.SetActive(false);
 
@@ -242,7 +264,7 @@ public class MesinPress : Mesin
                 
                 slot.GetComponent<Rigidbody>().isKinematic = false;
                 slot.GetComponent<Rigidbody>().useGravity = true;
-
+                slot.GetComponent<MeshCollider>().convex = true;
                 slot.IsSnapped = false;
                 // Coba panggil API unsnap jika ada
                 try

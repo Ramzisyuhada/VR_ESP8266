@@ -5,7 +5,7 @@ public class CuttingProximitySensor : MonoBehaviour
 {
     [Header("Refs (wajib)")]
     public GateCutting mesin;                        // drag GateCutting
-    public SnapOnReleaseByDistance platform;         // drag komponen snap milik Platform
+    public SnapBase platform;         // drag komponen snap milik Platform
 
     [Header("Identifikasi")]
     public string handTag = "Hand";                  // tag collider tangan/jari

@@ -10,6 +10,13 @@ using UnityEngine.UI;
 
 public class WsRouterClientNative : MonoBehaviour
 {
+    // ================== IDENTITY ==================
+    [Header("Identity / Device ID")]
+    [Tooltip("ID yang dikirim ke server Python via SETID dan HELLO_FROM")]
+    public string clientId = "";                      // contoh: "Si-MekaK3-VR-1"
+    [Tooltip("Kalau kosong, ambil dari device + angka unik")]
+    public bool autoUseDeviceNameIfEmpty = true;
+
     // ================== KONFIG DASAR ==================
     [Header("Server WebSocket")]
     public string serverHost = "192.168.1.23";
@@ -55,6 +62,9 @@ public class WsRouterClientNative : MonoBehaviour
     private string pairedIp = null;
     private string pairedId = null;
 
+    // IP kita (dikasih server)
+    private string myIp = null;
+
     // UDP
     private UdpClient udpListener;
     private bool udpRunning = false;
@@ -63,6 +73,7 @@ public class WsRouterClientNative : MonoBehaviour
     // pref
     const string PREF_IP = "WsRouter_IP";
     const string PREF_PORT = "WsRouter_PORT";
+    const string PREF_ID = "WsRouter_ID";
 
     // status debounce
     private float _lastStatusTime = 0f;
@@ -74,14 +85,33 @@ public class WsRouterClientNative : MonoBehaviour
         Application.runInBackground = true;
         LoadPrefs();
 
+        // 🔹 kalau ID kosong, bikin otomatis
+        if (string.IsNullOrWhiteSpace(clientId) && autoUseDeviceNameIfEmpty)
+        {
+            // misal hasil: "MekaK3-VR-QUEST3-742"
+            string model = SystemInfo.deviceModel;
+            if (string.IsNullOrWhiteSpace(model))
+                model = SystemInfo.deviceName;
+
+            model = model.Replace(" ", "").Replace("(", "").Replace(")", "");
+
+            int hash = Mathf.Abs(SystemInfo.deviceUniqueIdentifier.GetHashCode()) % 1000;
+            clientId = $"MekaK3-VR-{model}-{hash}";
+            Debug.Log("[AUTO-ID] generate: " + clientId);
+        }
+
         if (ipInput) ipInput.text = serverHost;
         if (portInput) portInput.text = serverPort.ToString();
 
         WireUI();
 
-        ShowPanelInput();
-        SetStatus("Isi IP & Port, lalu connect.");
-        panelConnecting.SetActive(true);
+        // 🔵 permintaanmu: awalnya panel input & panel connected aktif
+        if (panelInput) panelInput.SetActive(false);
+        if (panelConnected) panelConnected.SetActive(false);
+        if (panelConnecting) panelConnecting.SetActive(true);
+
+        SetStatus("Silakan isi IP & Port, atau tunggu server.");
+
         if (autoConnectOnStart)
             ConnectSafe();
     }
@@ -113,6 +143,10 @@ public class WsRouterClientNative : MonoBehaviour
             ReadInputs();
             SavePrefs();
             ConnectSafe();
+
+            if (panelConnected) panelConnected.SetActive(true);
+            if (panelInput) panelInput.SetActive(false);
+            if (panelConnecting) panelConnecting.SetActive(false);
         });
 
         if (btnUdpScan) btnUdpScan.onClick.AddListener(StartUdp);
@@ -123,7 +157,7 @@ public class WsRouterClientNative : MonoBehaviour
     void ShowPanelInput()
     {
         if (panelInput) panelInput.SetActive(true);
-        if (panelConnecting) panelConnecting.SetActive(false);
+        if (panelConnecting) panelConnecting.SetActive(true);
         if (panelConnected) panelConnected.SetActive(false);
     }
 
@@ -160,12 +194,15 @@ public class WsRouterClientNative : MonoBehaviour
             serverHost = PlayerPrefs.GetString(PREF_IP, serverHost);
         if (PlayerPrefs.HasKey(PREF_PORT))
             serverPort = PlayerPrefs.GetInt(PREF_PORT, serverPort);
+        if (PlayerPrefs.HasKey(PREF_ID))
+            clientId = PlayerPrefs.GetString(PREF_ID, clientId);
     }
 
     void SavePrefs()
     {
         PlayerPrefs.SetString(PREF_IP, serverHost);
         PlayerPrefs.SetInt(PREF_PORT, serverPort);
+        PlayerPrefs.SetString(PREF_ID, clientId);
         PlayerPrefs.Save();
     }
 
@@ -187,8 +224,9 @@ public class WsRouterClientNative : MonoBehaviour
     private IEnumerator ConnectRoutine()
     {
         isConnecting = true;
-        ShowPanelConnecting($"🔌 Menghubungkan ke ws://{serverHost}:{serverPort} ...");
+        ShowPanelConnecting($"🔌 Menghubungkan ke Server {serverHost}:{serverPort} ...");
         var t = Connect();
+
         while (!t.IsCompleted) yield return null;
         isConnecting = false;
     }
@@ -198,8 +236,8 @@ public class WsRouterClientNative : MonoBehaviour
     {
         if (IsConnected())
         {
+
             ShowPanelConnected();
-            return;
         }
 
         await SafeClose();
@@ -210,20 +248,22 @@ public class WsRouterClientNative : MonoBehaviour
         {
             pairedIp = null;
             pairedId = null;
-            SetStatus("✅ Terhubung ke server.");
-            ShowPanelConnected();
+            myIp = null;
 
-            if (enableHeartbeat)
-            {
-                if (heartbeatCo != null) StopCoroutine(heartbeatCo);
-                heartbeatCo = StartCoroutine(HeartbeatLoop());
-            }
+            SetStatus("✅ Terhubung ke server. Tunggu sebentar...");
+
+            // 👉 jangan langsung, tapi tunggu dikit
+            StartCoroutine(ShowInputDelayed(0.5f));
+
+            // kirim SETID / HELLO sedikit setelah connect
+            StartCoroutine(SendHelloAfterDelay(0.3f));
         };
 
         ws.OnClose += (code) =>
         {
             pairedIp = null;
             pairedId = null;
+            myIp = null;
 
             if (heartbeatCo != null) { StopCoroutine(heartbeatCo); heartbeatCo = null; }
 
@@ -244,6 +284,7 @@ public class WsRouterClientNative : MonoBehaviour
         {
             pairedIp = null;
             pairedId = null;
+            myIp = null;
 
             if (heartbeatCo != null) { StopCoroutine(heartbeatCo); heartbeatCo = null; }
 
@@ -345,69 +386,86 @@ public class WsRouterClientNative : MonoBehaviour
     // ================== HANDLE PESAN SERVER ==================
     void HandleServerMsg(string msg)
     {
+        // tetap log ke console untuk debug
         Debug.Log("[SRV] " + msg);
 
         // 1. Filter heartbeat
         if (msg == "PING" || msg == "PONG" || msg.StartsWith("HEARTBEAT"))
         {
-            // jangan tampilkan di status
+            // ini pesan rutin, gak usah ditampilin di UI
             return;
         }
 
         // 2. Info IP kita
         if (msg.StartsWith("YOURIP:"))
         {
-            var myip = msg.Substring("YOURIP:".Length).Trim();
-            SetStatus("IP kamu: " + myip);
+            myIp = msg.Substring("YOURIP:".Length).Trim();
+            // gak ditampilin supaya UI gak rame
+            // tapi logika lanjut tetap jalan
+            if (!string.IsNullOrWhiteSpace(clientId))
+            {
+                _ = SendRaw($"HELLO_FROM:{clientId} IP:{myIp}");
+                Debug.Log($"[WS-CLIENT] SEND -> HELLO_FROM:{clientId} IP:{myIp}");
+            }
             return;
         }
 
-        // 3. Server memaksa kita pair ke IP tertentu
+        // 3. Pesan pairing dari server
         if (msg.StartsWith("PAIR_OK_IP:"))
         {
             pairedIp = msg.Substring("PAIR_OK_IP:".Length).Trim();
             pairedId = null;
 
-            SetStatus("✅ Dipasangkan ke IP: " + pairedIp);
-            ShowPanelConnected();
+            // kita tetap mau ganti panel, tapi gak usah tulis teksnya
+           // ShowPanelConnected();
             return;
         }
 
-        // 4. Server bilang kita dipasangkan bersama IP ini (kita jadi pasangannya)
         if (msg.StartsWith("PAIR_OK_WITH_IP:"))
         {
             pairedIp = msg.Substring("PAIR_OK_WITH_IP:".Length).Trim();
             pairedId = null;
 
-            SetStatus("✅ Dipasangkan bersama IP: " + pairedIp);
-            ShowPanelConnected();
+            SetStatus("📨 " + msg);
+
+            //ShowPanelConnected();
             return;
         }
 
-        // 5. Pairing berbasis ID
         if (msg.StartsWith("PAIR_OK:"))
         {
-            // kalau server pakai ID
             pairedId = msg.Substring("PAIR_OK:".Length).Trim();
             pairedIp = null;
 
-            SetStatus("✅ Dipasangkan ke ID: " + pairedId);
-            ShowPanelConnected();
+            //ShowPanelConnected();
             return;
         }
 
-        // 6. Unpair
+        // 4. Unpair
         if (msg.StartsWith("UNPAIRED_BY_SERVER") || msg.StartsWith("UNPAIRED_BY_PARTNER"))
         {
             pairedIp = null;
             pairedId = null;
 
-            SetStatus("ℹ️ Pair dilepas server.");
+            // silent
             return;
         }
 
-        // 7. Pesan biasa
-        SetStatus("📨 " + msg);
+        // 5. Pesan internal antar client yg biasanya gak mau ditampilin
+        // contoh: HELLO_FROM:..., SETID:..., LISTCLIENTS, LISTDETAIL
+        if (msg.StartsWith("HELLO_FROM:")
+            || msg.StartsWith("SETID:")
+            || msg.StartsWith("LISTCLIENTS")
+            || msg.StartsWith("LISTDETAIL"))
+        {
+            // jangan tampilkan ke UI
+            return;
+        }
+
+        // 6. Pesan lain yang "beneran" boleh ditampilkan
+        // misal kamu nanti kirim "DATA:..." dari server
+        // di sini baru kita tampilkan
+        //SetStatus("📨 " + msg);
     }
 
 
@@ -541,6 +599,66 @@ public class WsRouterClientNative : MonoBehaviour
         udpListener = null;
     }
 
+    // ================== PANEL SETELAH CONNECT ==================
+    void ShowInputAfterConnected()
+    {
+        // setelah connect, kita gak mau panelConnected
+        if (panelConnected) panelConnected.SetActive(true);
+
+        // panel connecting juga dimatiin karena udah connect
+        if (panelConnecting) panelConnecting.SetActive(false);
+
+        // yang ditampilin lagi panel input
+        if (panelInput) panelInput.SetActive(false);
+
+        SetStatus("✅ . Kamu sudah terhubung Ke Server.");
+        StartCoroutine(HideDelayDebug(5));
+    }
+
+    private IEnumerator HideDelayDebug(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (panelInput) panelInput.SetActive(false);
+        if (panelConnected) panelConnected.SetActive(false);
+
+
+    }
+
+    private IEnumerator ShowInputDelayed(float delay)
+    {
+        // pastikan bener-bener sudah open
+        float t = 0f;
+        while (!IsConnected() && t < 1f)
+        {
+            t += Time.deltaTime;
+            yield return null;
+        }
+
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+
+        ShowInputAfterConnected();
+    }
+
+    private IEnumerator SendHelloAfterDelay(float delay)
+    {
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+
+        if (!string.IsNullOrWhiteSpace(clientId))
+        {
+            _ = SendRaw($"SETID:{clientId}");
+            Debug.Log("[WS-CLIENT] SEND -> SETID:" + clientId);
+        }
+
+        if (enableHeartbeat)
+        {
+            if (heartbeatCo != null) StopCoroutine(heartbeatCo);
+            heartbeatCo = StartCoroutine(HeartbeatLoop());
+        }
+    }
+
+    // ================== KIRIM PESAN MANUAL ==================
     public void KirimPesanKeClientTerpilih(string pesan)
     {
         if (!IsConnected())
@@ -565,12 +683,10 @@ public class WsRouterClientNative : MonoBehaviour
         if (!string.IsNullOrEmpty(pairedId))
         {
             _ = SendRaw($"TOID:{pairedId}|{msg}");
-           // SetStatus($"📨 Pesan dikirim ke ID {pairedId}");
         }
         else
         {
             _ = SendRaw($"TOIP:{pairedIp}|{msg}");
-            //SetStatus($"📨 Pesan dikirim ke IP {pairedIp}");
         }
     }
 }

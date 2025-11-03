@@ -65,21 +65,9 @@ public class PressSensor : MonoBehaviour
 
     private void TryEvaluate(Collider hand)
     {
-        // Temukan grup tangan atas (yang punya HVRHandPoser)
         Transform handRoot = GetHandGroupTop(hand.transform);
 
-        if (handRoot != null)
-        {
-            _disabledHandRoot = handRoot.gameObject;
-            handRoot.gameObject.SetActive(false);
-            Debug.Log($"[PressSensor] ❌ Menonaktifkan tangan: {handRoot.name}");
-        }
-        else
-        {
-            _disabledHandRoot = hand.gameObject;
-            hand.gameObject.SetActive(false);
-            Debug.LogWarning("[PressSensor] Hand root tidak ditemukan, fallback ke collider langsung.");
-        }
+
 
         // Panggil mesin simulasi kecelakaan
         mesin.SimulasiKecelakaan();
@@ -116,28 +104,7 @@ public class PressSensor : MonoBehaviour
     /// <summary>
     /// Reset sensor dan aktifkan kembali tangan yang sebelumnya dimatikan.
     /// </summary>
-    public void ResetSensor()
-    {
-        Debug.Log("[PressSensor] 🔄 Reset sensor...");
 
-        _handInside = false;
-        _lastHand = null;
-        _handEnterTime = -999f;
-        _nextAllowed = 0f;
-        IsPlay = false;
-
-        // Hidupkan kembali tangan terakhir yang dimatikan
-        if (_disabledHandRoot != null)
-        {
-            if (!_disabledHandRoot.activeSelf)
-            {
-                _disabledHandRoot.SetActive(true);
-                Debug.Log($"[PressSensor] 🤚 Mengaktifkan kembali tangan: {_disabledHandRoot.name}");
-            }
-
-            _disabledHandRoot = null;
-        }
-    }
 
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()

@@ -22,7 +22,7 @@ public class GateCutting : Mesin
 
     [Header("Platform (benda aman untuk cek pelumasan)")]
     [SerializeField] private GameObject platform; // drag komponen snap milik Platform
-    [SerializeField] private SnapOnReleaseByDistance Velk; // drag komponen snap milik Platform
+    [SerializeField] private SnapBase Velk; // drag komponen snap milik Platform
 
     private bool _platformSnapped;
 
@@ -260,15 +260,17 @@ public class GateCutting : Mesin
     {
         if (SawAktif() && CuttingSensor.CekOli)
         {
+            SimulasiBenar = true;
             _statetSimulasi = StatetSimulasi.Benar;
             if (audioAman)
                 audioAman.Play();  // 🔊 mainkan suara aman
-
+                
             if (uiAman)
             {
+                HeaderText.text = "Simulasi Benar! Selamat, Anda tidak mengalami kecelakaan.";
                 uiAman.SetActive(true);
-                CancelInvoke(nameof(HideUIAman));
-                Invoke(nameof(HideUIAman), uiAmanDuration);
+                //CancelInvoke(nameof(HideUIAman));
+                //Invoke(nameof(HideUIAman), uiAmanDuration);
             }
         }
         else
