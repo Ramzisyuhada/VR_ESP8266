@@ -194,7 +194,7 @@ public class GateCutting : Mesin
         {
             _statetMesin = StatetMesin.Nyala;
             isMesinOn = true;
-           // SuaraMesin.Play();
+           SuaraMesin.Play();
         }
     }
 
