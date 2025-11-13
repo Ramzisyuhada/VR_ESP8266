@@ -182,7 +182,7 @@ public class GateCutting : Mesin
 
             if (darahSFX)
                 darahSFX.Play();
-            wsRouter.KirimPesanKeClientTerpilih("salah");
+            wsRouter.KirimPesanKeClientTerpilih("kanan");
             // Opsional animasi darurat
             // Anim.SetTrigger("EmergencyStop");
         }

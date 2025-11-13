@@ -29,6 +29,8 @@ public class TriggerJalan : HVRImpactHapticsBase
 
     private Collider _col;
 
+    [Header("WS")]
+    public WsRouterClientNative Client;
     private void Reset()
     {
         var c = GetComponent<Collider>();
@@ -59,10 +61,11 @@ public class TriggerJalan : HVRImpactHapticsBase
         if (!IsValidTrigger(other)) return;
         Debug.Log(other.gameObject.tag);
 
+        if (Client != null) Client.KirimPesanKeClientTerpilih("SALAH");
         if (ui)
         {
             ui.SetActive(true);
-
+            
             Transform cam = Camera.main.transform;
             float distance = 2f;
 
@@ -77,6 +80,8 @@ public class TriggerJalan : HVRImpactHapticsBase
 
     private void OnTriggerExit(Collider other)
     {
+        if (Client != null) Client.KirimPesanKeClientTerpilih("BENAR");
+
         if (!IsValidTrigger(other)) return;
 
         if (ui && ui.activeSelf)

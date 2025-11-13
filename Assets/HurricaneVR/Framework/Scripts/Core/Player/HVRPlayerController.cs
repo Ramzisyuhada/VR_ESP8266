@@ -175,7 +175,7 @@ namespace HurricaneVR.Framework.Core.Player
 
         [SerializeField]
         private float _actualVelocity;
-
+        public bool Mulai;
         protected virtual void Awake()
         {
             RigidBody = GetComponent<Rigidbody>();
@@ -298,6 +298,7 @@ namespace HurricaneVR.Framework.Core.Player
 
             if (CharacterController.enabled)
             {
+
                
                 HandleMovement(); 
 
@@ -475,12 +476,12 @@ namespace HurricaneVR.Framework.Core.Player
                 return;
             }
 
-            if (!_waitingForCameraMovement)
+            if (!_waitingForCameraMovement )
             {
                 HandleHMDMovement();
             }
 
-            HandleHorizontalMovement();
+            if(Mulai)HandleHorizontalMovement();
             HandleVerticalMovement();
             AdjustHandAcceleration();
         }

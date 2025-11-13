@@ -32,6 +32,7 @@ public class WsRouterClientNative : MonoBehaviour
     public TMP_InputField ipInput;
     public TMP_InputField portInput;
     public Button btnConnect;
+    
 
     [Header("UI Kirim Pesan ke Pasangan")]
     public TMP_InputField messageInput;
@@ -42,6 +43,7 @@ public class WsRouterClientNative : MonoBehaviour
     public GameObject panelInput;     // panel isi IP
     public GameObject panelConnecting;
     public GameObject panelConnected;
+    public GameObject GameMenu;
 
     [Header("Reconnect")]
     public bool autoReconnect = true;
@@ -78,6 +80,9 @@ public class WsRouterClientNative : MonoBehaviour
     // status debounce
     private float _lastStatusTime = 0f;
     private const float STATUS_MIN_INTERVAL = 0.1f;
+
+
+    
 
     // ================== UNITY ==================
     private void Start()
@@ -620,6 +625,7 @@ public class WsRouterClientNative : MonoBehaviour
         yield return new WaitForSeconds(delay);
         if (panelInput) panelInput.SetActive(false);
         if (panelConnected) panelConnected.SetActive(false);
+        if (GameMenu != null) GameMenu.SetActive(true);
 
 
     }

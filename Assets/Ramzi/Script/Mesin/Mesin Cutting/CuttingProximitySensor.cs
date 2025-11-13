@@ -46,9 +46,23 @@ public class CuttingProximitySensor : MonoBehaviour
             //if (mesin.PlatformSnapped)
             //    mesin.AksiBenar_CekPelumasan();   // ✅ aman karena platform sudah terpasang
             //else
-                mesin.SimulasiKecelakaan(hitPos, other.transform); // 👉 jadikan child sensor
-            return;
-        }else if (other.CompareTag("MasterPlat"))
+
+            Transform current = other.transform;
+
+            while (current != null)
+            {
+                Debug.Log(current.name);
+
+                if (current.name == "RightHandModel")
+                {
+                    mesin.SimulasiKecelakaan(hitPos, current);
+                    return;
+                }
+
+                current = current.parent; // naik ke parent berikutnya
+            }
+        }
+        else if (other.CompareTag("MasterPlat"))
         {
             CekOli = true;
 

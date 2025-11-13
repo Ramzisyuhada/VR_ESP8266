@@ -1,5 +1,7 @@
+using HurricaneVR.Framework.Core.Player;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 public class UIManager : MonoBehaviour
@@ -8,14 +10,20 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject HalamanUIUtama;
     [SerializeField] private GameObject PilihanSimulasiUI;
 
+    [SerializeField] private HVRPlayerController Player;
+
     private Vector3 PosisiPlayer;
 
     public void MulaiGame()
     {
-        HalamanUIUtama.SetActive(false);
+        Player.Mulai = true;
     }
     public void ExitGame()
     {
+#if UNITY_EDITOR
+        EditorApplication.isPlaying = false;
+#endif
+        Application.Quit();
 
     }
     public void RestartGame()
