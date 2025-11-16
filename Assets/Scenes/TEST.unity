@@ -67908,7 +67908,7 @@ MonoBehaviour:
   InputFieldSlide: {fileID: 2038133611}
   SliderEnabled: 1
   SubmitOnEnter: 1
-  AlphaKeyboard: {fileID: 2038136669}
+  AlphaKeyboard: {fileID: 0}
   SymbolKeyboard: {fileID: 2038145247}
   AlphaSubKeys: {fileID: 2038147983}
   AlphaWebKeys: {fileID: 2038160245}

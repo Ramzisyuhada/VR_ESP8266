@@ -546,7 +546,8 @@ namespace Microsoft.MixedReality.Toolkit.Experimental.UI
                 default:
                 {
                     ShowAlphaKeyboard();
-                    TryToShowAlphaSubkeys();
+
+                    if(AlphaKeyboard != null)TryToShowAlphaSubkeys();
                     break;
                 }
             }
@@ -948,7 +949,7 @@ namespace Microsoft.MixedReality.Toolkit.Experimental.UI
         /// </summary>
         public void ShowAlphaKeyboard()
         {
-            AlphaKeyboard.gameObject.SetActive(true);
+           if(AlphaKeyboard != null) AlphaKeyboard.gameObject.SetActive(true);
             m_LastKeyboardLayout = LayoutType.Alpha;
         }
 
@@ -958,9 +959,11 @@ namespace Microsoft.MixedReality.Toolkit.Experimental.UI
         /// <returns>Returns true if default subkeys were activated, false if alphanumeric keyboard isn't active</returns>
         private bool TryToShowAlphaSubkeys()
         {
+
+
             if (AlphaKeyboard.IsActive())
             {
-                AlphaSubKeys.gameObject.SetActive(true);
+              if(AlphaKeyboard!=null)  AlphaSubKeys.gameObject.SetActive(true);
                 return true;
             }
             else
@@ -1018,8 +1021,9 @@ namespace Microsoft.MixedReality.Toolkit.Experimental.UI
         /// </summary>
         private void DisableAllKeyboards()
         {
-            AlphaKeyboard.gameObject.SetActive(false);
-            SymbolKeyboard.gameObject.SetActive(false);
+
+            if (AlphaKeyboard != null) AlphaKeyboard.gameObject.SetActive(false);
+          //  SymbolKeyboard.gameObject.SetActive(false);
 
             AlphaWebKeys.gameObject.SetActive(false);
             AlphaMailKeys.gameObject.SetActive(false);

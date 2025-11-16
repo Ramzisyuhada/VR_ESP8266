@@ -8,7 +8,7 @@ public class ShowKeyboard : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private TMP_InputField inputField;
-    [SerializeField] private Transform positionSource;
+    [SerializeField] private Transform positionSource; // biasanya head/camera
 
     [Header("Keyboard Placement")]
     [SerializeField] private float distance = 0.5f;
@@ -21,7 +21,7 @@ public class ShowKeyboard : MonoBehaviour
 
     private NonNativeKeyboard keyboard;
 
-    // ==== Owner logic (biar nggak lag kalau ada 2 ShowKeyboard) ====
+    // ==== Owner logic (biar nggak tabrakan kalau ada banyak ShowKeyboard) ====
     private static ShowKeyboard activeOwner = null;
     private bool isActiveOwner = false;
 
@@ -32,7 +32,7 @@ public class ShowKeyboard : MonoBehaviour
 
         keyboard = NonNativeKeyboard.Instance;
 
-        // Penting di Android / Quest:
+        // Penting untuk Android / Quest:
         inputField.shouldHideMobileInput = true;   // sembunyikan input box native
 #if UNITY_ANDROID
         inputField.shouldHideSoftKeyboard = true;  // paksa TMP yang urus caret & input
@@ -54,7 +54,6 @@ public class ShowKeyboard : MonoBehaviour
 
         UnsubscribeKeyboardEvents();
 
-        // Lepas owner kalau script ini kebetulan yang aktif
         if (activeOwner == this)
             activeOwner = null;
 
@@ -63,14 +62,10 @@ public class ShowKeyboard : MonoBehaviour
 
     private void Update()
     {
-        if (!inputField) return;
-        if (keyboard == null) return;
+        if (!inputField || keyboard == null) return;
+        if (!isActiveOwner || activeOwner != this) return;
 
-        // Hanya pemilik aktif yang boleh ngurus keyboard & fokus
-        if (!isActiveOwner || activeOwner != this)
-            return;
-
-        // Selama keyboard masih aktif, jagain supaya inputField tetap fokus di VR
+        // Jaga supaya inputField tetap fokus ketika keyboard aktif
         if (keyboard.gameObject.activeInHierarchy)
         {
             if (!inputField.isFocused)
@@ -83,7 +78,7 @@ public class ShowKeyboard : MonoBehaviour
             }
         }
 
-        // Kalau sedang fokus, pastikan caret-nya nggak diubah script lain
+        // Kalau fokus, pastikan caret tetap kelihatan
         if (inputField.isFocused)
         {
             if (!inputField.customCaretColor ||
@@ -97,16 +92,50 @@ public class ShowKeyboard : MonoBehaviour
 
     private void OnInputSelected(string _)
     {
-        // Kalau keyboard sudah aktif dan owner-nya kita,
-        // jangan buka + reposition lagi (biar keyboard nggak "lari-lari" saat ngetik).
-        if (keyboard != null &&
-            keyboard.gameObject.activeInHierarchy &&
-            activeOwner == this)
+        // Pastikan instance keyboard ada
+        if (keyboard == null)
         {
+            keyboard = NonNativeKeyboard.Instance;
+            if (keyboard == null)
+            {
+                Debug.LogWarning("NonNativeKeyboard.Instance tidak ditemukan di scene.");
+                return;
+            }
+        }
+
+        // Fallback posisi sumber (kamera)
+        if (!positionSource)
+        {
+            if (Camera.main != null)
+                positionSource = Camera.main.transform;
+            else
+                positionSource = transform;
+        }
+
+        // === Jika keyboard SUDAH aktif ===
+        if (keyboard.gameObject.activeInHierarchy)
+        {
+            // Kalau owner lama beda, lepas dulu
+            if (activeOwner != null && activeOwner != this)
+            {
+                activeOwner.ReleaseFocus();
+            }
+
+            // Set owner ke input field ini
+            activeOwner = this;
+            isActiveOwner = true;
+
+            // Ganti binding input field (kalau ganti field)
+            keyboard.InputField = inputField;
+
+            // ⚡ Snap posisi & rotasi ke kamera SETIAP TAP
+            PlaceKeyboardOnce();
+
             EnsureFocusOnly();
             return;
         }
 
+        // === Kalau keyboard belum aktif, buka baru ===
         OpenKeyboard();
     }
 
@@ -122,15 +151,6 @@ public class ShowKeyboard : MonoBehaviour
             }
         }
 
-        // 🔒 Kalau keyboard sudah aktif untuk field ini,
-        // jangan reposition/present lagi supaya tidak "lari-lari" saat ngetik.
-        if (keyboard.gameObject.activeInHierarchy && activeOwner == this)
-        {
-            EnsureFocusOnly();
-            return;
-        }
-
-        // Fallback posisi
         if (!positionSource)
         {
             if (Camera.main != null)
@@ -139,13 +159,13 @@ public class ShowKeyboard : MonoBehaviour
                 positionSource = transform;
         }
 
-        // Kalau owner lama beda, lepas fokus dia dulu
+        // Kalau owner lama beda, lepas dulu
         if (activeOwner != null && activeOwner != this)
         {
             activeOwner.ReleaseFocus();
         }
 
-        // Set owner baru (input field yang barusan di-select)
+        // Set owner baru
         activeOwner = this;
         isActiveOwner = true;
 
@@ -153,38 +173,47 @@ public class ShowKeyboard : MonoBehaviour
         keyboard.InputField = inputField;
         keyboard.PresentKeyboard(inputField != null ? inputField.text : "");
 
-        // Hitung posisi keyboard di depan user
-        Vector3 direction = positionSource.forward;
-        direction.y = 0f;
-        if (direction.sqrMagnitude < 0.0001f)
-            direction = positionSource.forward;
-        direction.Normalize();
+        // Posisi & rotasi sekali saat dibuka
+        PlaceKeyboardOnce();
 
-        Vector3 targetPosition =
-            positionSource.position +
-            direction * distance +
-            Vector3.up * verticalOffset;
-
-        keyboard.RepositionKeyboard(targetPosition);
-
-        // === Fokuskan input field & paksa caret hidup ===
         EnsureFocusOnly();
 
         UnsubscribeKeyboardEvents();
         keyboard.OnClosed += Instance_OnClosed;
 
-        // Trik refresh TMP supaya caret benar-benar muncul di VR
         StartCoroutine(RefreshInputFieldNextFrame());
+    }
+
+    private void PlaceKeyboardOnce()
+    {
+        if (!positionSource || keyboard == null) return;
+
+        // Arah depan kamera (yaw saja, y = 0 biar nggak terlalu naik-turun)
+        Vector3 dir = positionSource.forward;
+        dir.y = 0f;
+        if (dir.sqrMagnitude < 0.0001f)
+            dir = positionSource.forward;
+        dir.Normalize();
+
+        // Posisi keyboard di depan kamera
+        Vector3 targetPosition =
+            positionSource.position +
+            dir * distance +
+            Vector3.up * verticalOffset;
+
+        // Rotasi keyboard menghadap arah pandang kamera (di bidang horizontal)
+        Quaternion targetRotation = Quaternion.LookRotation(dir, Vector3.up);
+
+        keyboard.RepositionKeyboard(targetPosition);
+        keyboard.transform.rotation = targetRotation;
     }
 
     private System.Collections.IEnumerator RefreshInputFieldNextFrame()
     {
-        // Tunggu 1 frame dulu
         yield return null;
 
         if (!inputField) yield break;
 
-        // Re-enable memaksa TMP rebuild mesh (termasuk caret)
         inputField.enabled = false;
         inputField.enabled = true;
 
@@ -199,9 +228,6 @@ public class ShowKeyboard : MonoBehaviour
             activeOwner = null;
 
         isActiveOwner = false;
-
-        // Di tahap debug ini caret tidak disembunyikan,
-        // supaya kelihatan apakah dia benar-benar muncul.
     }
 
     private void UnsubscribeKeyboardEvents()
@@ -216,7 +242,6 @@ public class ShowKeyboard : MonoBehaviour
 
         inputField.customCaretColor = true;
 
-        // pastikan alpha = 1
         caretVisibleColor.a = 1f;
         inputField.caretColor = caretVisibleColor;
 
