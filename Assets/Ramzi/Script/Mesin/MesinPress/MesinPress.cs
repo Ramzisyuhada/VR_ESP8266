@@ -9,6 +9,8 @@ public class MesinPress : Mesin
 {
     [Header("VFX & Audio")]
     [SerializeField] private GameObject DarahSfx;
+    [SerializeField] private GameObject DarahSfx1;
+
     [SerializeField] private AudioSource darahSFX;
     [SerializeField] private AudioSource audioAman;
     [SerializeField] private AudioSource AudioMesin;
@@ -129,6 +131,8 @@ public class MesinPress : Mesin
     {
         wsRouter.KirimPesanKeClientTerpilih("salah");
         if (DarahSfx) DarahSfx.SetActive(true);
+        if (DarahSfx) DarahSfx1.SetActive(true);
+
         if (audioSalah) audioSalah.Play();
 
         if (HeaderText) HeaderText.text = "Simulasi Gagal! Anda mengalami kecelakaan.";
@@ -141,7 +145,6 @@ public class MesinPress : Mesin
     {
         if (_statetMesin != StatetMesin.Simulasi) return;
 
-        // hitung ulang jumlah key yang snapped SETIAP cek
         SlotKeys = 0;
         if (KeySlot != null)
         {
@@ -151,7 +154,6 @@ public class MesinPress : Mesin
             }
         }
 
-        // 4 slot sebagai ambang 'benar'. Jika kurang & tangan di dalam → salah.
         if (SlotKeys >= 4)
         {
             AksiBenar();

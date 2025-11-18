@@ -5,21 +5,9 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/Knife/Real Blood/Scenes/RealBloodShowcase.unity
-    guid: 4b9487a5c63b9984c94ffd23e3b20c88
-  - enabled: 0
-    path: Assets/Scenes/Factory_Interior.unity
-    guid: 53bae7bbca6b3dd4a8162862a305f5c0
-  - enabled: 0
-    path: Assets/Ramzi/Scane/Real.unity
-    guid: 9dd8a70a726378f429f412b4be096643
   - enabled: 1
     path: Assets/Scenes/TEST.unity
     guid: 2e9912f1c1e9f8945aca49f19d2b27f9
-  - enabled: 0
-    path: Assets/Scenes/Factory_Interior 1.unity
-    guid: e1379581da6495f42a27ffcec2a72a4c
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 34e5b536ed19a234f8cf23c3d20d4b1f,
       type: 2}

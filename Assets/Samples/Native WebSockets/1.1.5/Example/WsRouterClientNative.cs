@@ -120,12 +120,48 @@ public class WsRouterClientNative : MonoBehaviour
         if (autoConnectOnStart)
             ConnectSafe();
     }
+    private bool pairedShown = false;
+    private bool unpairedShown = false;
 
+    IEnumerator ShowPairedOnce(String text)
+    {
+        statusText.text = text + pairedIp;
+
+        panelConnected.SetActive(true); // tampil dulu
+        yield return new WaitForSeconds(3f);
+
+        panelConnected.SetActive(false); // hilang setelah delay
+    }
     private void Update()
     {
+        //if (IsPaired() && IsConnected())
+        //{
+        //    // Reset unpaired
+        //    unpairedShown = false;
+
+        //    if (!pairedShown)
+        //    {
+        //        pairedShown = true;
+        //        StartCoroutine(ShowPairedOnce("Kamu Sudah Terhubung Ke " ));
+        //    }
+        //}
+        //else if (IsPaired() && IsConnected())
+        //{
+        //    // Reset paired
+        //    pairedShown = false;
+
+        //    if (!unpairedShown)
+        //    {
+        //        unpairedShown = true;
+        //        StartCoroutine(ShowPairedOnce("Kamu Terputus Dari Client!"));
+        //    }
+        //}
+
 #if !UNITY_WEBGL || UNITY_EDITOR
         ws?.DispatchMessageQueue();
 #endif
+
+
     }
 
     private void OnDestroy()
@@ -415,18 +451,38 @@ public class WsRouterClientNative : MonoBehaviour
             return;
         }
 
+       
         // 3. Pesan pairing dari server
         if (msg.StartsWith("PAIR_OK_IP:"))
         {
             pairedIp = msg.Substring("PAIR_OK_IP:".Length).Trim();
             pairedId = null;
+            StartCoroutine(ShowPairedOnce("Kamu Sudah Terhubung Ke "));
 
             // kita tetap mau ganti panel, tapi gak usah tulis teksnya
-           // ShowPanelConnected();
+            // ShowPanelConnected();
             return;
         }
+        if (msg.StartsWith("UNPAIR_OK:") || msg.StartsWith("UNPAIRED_BY_SERVER:"))
+        {
 
-        if (msg.StartsWith("PAIR_OK_WITH_IP:"))
+            StartCoroutine(ShowPairedOnce("Kamu Terputus "));
+
+
+            // kita tetap mau ganti panel, tapi gak usah tulis teksnya
+            // ShowPanelConnected();
+            return;
+        }
+        if (msg.StartsWith("[WS] Klien terputus:"))
+        {
+
+            pairedShown = false;
+            StartCoroutine(ShowPairedOnce("Kamu Terputus "));
+
+
+            return;
+        }
+            if (msg.StartsWith("PAIR_OK_WITH_IP:"))
         {
             pairedIp = msg.Substring("PAIR_OK_WITH_IP:".Length).Trim();
             pairedId = null;
@@ -619,14 +675,14 @@ public class WsRouterClientNative : MonoBehaviour
         SetStatus("✅ . Kamu sudah terhubung Ke Server.");
         StartCoroutine(HideDelayDebug(5));
     }
-
+    public bool FirstPlay = true;
     private IEnumerator HideDelayDebug(float delay)
     {
         yield return new WaitForSeconds(delay);
         if (panelInput) panelInput.SetActive(false);
         if (panelConnected) panelConnected.SetActive(false);
-        if (GameMenu != null) GameMenu.SetActive(true);
-
+        if (GameMenu != null && FirstPlay) GameMenu.SetActive(true);
+        FirstPlay = false;
 
     }
 
@@ -644,6 +700,10 @@ public class WsRouterClientNative : MonoBehaviour
             yield return new WaitForSeconds(delay);
 
         ShowInputAfterConnected();
+    }
+    public bool IsPaired()
+    {
+        return !string.IsNullOrEmpty(pairedIp) || !string.IsNullOrEmpty(pairedId);
     }
 
     private IEnumerator SendHelloAfterDelay(float delay)

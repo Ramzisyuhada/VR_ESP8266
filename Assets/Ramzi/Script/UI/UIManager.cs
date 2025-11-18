@@ -14,6 +14,7 @@ public class UIManager : MonoBehaviour
 
     private Vector3 PosisiPlayer;
 
+    public WsRouterClientNative Server;
     public void MulaiGame()
     {
 
