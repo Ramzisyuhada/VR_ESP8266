@@ -1,6 +1,6 @@
 using HurricaneVR.Framework.Components;
 using HurricaneVR.Framework.Core.Grabbers;
-using UnityEngine;
+    using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
 public class TriggerJalan : HVRImpactHapticsBase
@@ -60,6 +60,7 @@ public class TriggerJalan : HVRImpactHapticsBase
     {
         if (!IsValidTrigger(other)) return;
         Debug.Log(other.gameObject.tag);
+        Debug.Log("Salah");
 
         if (Client != null) Client.KirimPesanKeClientTerpilih("SALAH");
         if (ui)
@@ -80,8 +81,8 @@ public class TriggerJalan : HVRImpactHapticsBase
 
     private void OnTriggerExit(Collider other)
     {
-        if (Client != null) Client.KirimPesanKeClientTerpilih("BENAR");
-
+        Debug.Log("Keluar");
+        
         if (!IsValidTrigger(other)) return;
 
         if (ui && ui.activeSelf)

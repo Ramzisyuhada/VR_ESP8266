@@ -16,6 +16,7 @@ public class UIManager : MonoBehaviour
 
     public void MulaiGame()
     {
+
         Player.Mulai = true;
     }
     public void ExitGame()
