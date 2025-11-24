@@ -129,7 +129,7 @@ public class ShowKeyboard : MonoBehaviour
             keyboard.InputField = inputField;
 
             // ⚡ Snap posisi & rotasi ke kamera SETIAP TAP
-            PlaceKeyboardOnce();
+            //PlaceKeyboardOnce();
 
             EnsureFocusOnly();
             return;

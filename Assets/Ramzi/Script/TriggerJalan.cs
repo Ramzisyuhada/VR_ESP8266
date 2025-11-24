@@ -1,6 +1,6 @@
 using HurricaneVR.Framework.Components;
 using HurricaneVR.Framework.Core.Grabbers;
-    using UnityEngine;
+using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
 public class TriggerJalan : HVRImpactHapticsBase
@@ -71,11 +71,6 @@ public class TriggerJalan : HVRImpactHapticsBase
     private void OnTriggerEnter(Collider other)
     {
         if (!IsValidTrigger(other)) return;
-<<<<<<< HEAD
-        Debug.Log(other.gameObject.tag);
-        Debug.Log("Salah");
-=======
->>>>>>> bcb11fea310aa2cd3c8167161fdc97ea246b6809
 
         if (DebugLogs)
             Debug.Log($"{name}: Enter oleh {other.gameObject.name} (tag={other.tag}).");
@@ -104,11 +99,6 @@ public class TriggerJalan : HVRImpactHapticsBase
 
     private void OnTriggerExit(Collider other)
     {
-<<<<<<< HEAD
-        Debug.Log("Keluar");
-        
-=======
->>>>>>> bcb11fea310aa2cd3c8167161fdc97ea246b6809
         if (!IsValidTrigger(other)) return;
 
         // Kirim status benar
