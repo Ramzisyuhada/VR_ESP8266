@@ -188,14 +188,15 @@ public class GateCutting : Mesin
         }
     }
     // ===== API publik =====
-    public void OnMesin() {
-
-        if (SuaraMesin != null && Anim != null && _statetMesin == StatetMesin.None && _statetSimulasi != StatetSimulasi.Gagal)
-        {
-            _statetMesin = StatetMesin.Nyala;
-            isMesinOn = true;
-           SuaraMesin.Play();
-        }
+    public void OnMesin()
+    {
+            if (SuaraMesin != null && Anim != null && _statetMesin == StatetMesin.None && _statetSimulasi != StatetSimulasi.Gagal && SimulasiManager.Instance.kondisi != KondisiEnum.Mesin2)
+            {
+                _statetMesin = StatetMesin.Nyala;
+                isMesinOn = true;
+                SuaraMesin.Play();
+            }
+     
     }
 
     public void BukaPintu()
@@ -368,6 +369,7 @@ public class GateCutting : Mesin
     public void ResetSimulasi()
     {
         Debug.Log("[GateCutting] 🔄 Reset simulasi...");
+        SimulasiManager.Instance.kondisi = KondisiEnum.None;
 
         // 1️⃣ Hentikan semua suara
         if (SuaraMesin && SuaraMesin.isPlaying) SuaraMesin.Stop();

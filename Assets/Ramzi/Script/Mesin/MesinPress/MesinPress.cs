@@ -34,7 +34,7 @@ public class MesinPress : Mesin
     private PressSensor sensor;
 
     // Slot snap & objek sebelum dipasang ke slot
-    public SnapBase[] KeySlot;
+    public SnapBase[] KeySlot; 
     public GameObject[] SebelumKeySlot; // objek kunci sebelum dipasang
 
     [Header("Input Controller")]
@@ -154,13 +154,13 @@ public class MesinPress : Mesin
             }
         }
 
-        if (SlotKeys >= 4)
+        if (SlotKeys >= 2)
         {
             AksiBenar();
         }
         else
         {
-            if ((sensor && sensor._handInside) || SlotKeys < 4)
+            if ((sensor && sensor._handInside) || SlotKeys < 2)
                 AksiSalah();
         }
     }
@@ -198,7 +198,7 @@ public class MesinPress : Mesin
 
     public void Mulai()
     {
-        if (_statetMesin == StatetMesin.None)
+        if (_statetMesin == StatetMesin.None && SimulasiManager.Instance.kondisi != KondisiEnum.Mesin1)
         {
             _statetMesin = StatetMesin.TopPlateUp;
             var rig = PosisiNpc ? PosisiNpc.GetComponent<RigBuilder>() : null;
@@ -230,12 +230,13 @@ public class MesinPress : Mesin
 
     public void ResetSimulasi()
     {
+        SimulasiManager.Instance.kondisi = KondisiEnum.None;
         Debug.Log("[MesinPress] 🔄 Reset simulasi...");
         wsRouter.KirimPesanKeClientTerpilih("benar");
 
         // Reset sensor (aktifkan kembali tangan yang dimatikan)
         if (DarahSfx) DarahSfx.SetActive(false);
-
+        if (DarahSfx1) DarahSfx1.SetActive(false);
         // 1) Matikan semua audio
         if (AudioMesin && AudioMesin.isPlaying) AudioMesin.Stop();
         if (AudioAlarmKecelakaan && AudioAlarmKecelakaan.isPlaying) AudioAlarmKecelakaan.Stop();
