@@ -1263,6 +1263,7 @@ namespace HurricaneVR.Framework.Core.Grabbers
             if (_grabIndicatorEnabled) return;
             if (_grabIndicator)
             {
+                Debug.Log("Daper");
                 _grabIndicatorEnabled = true;
                 _grabIndicator.Enable();
                 _grabIndicator.Hover();

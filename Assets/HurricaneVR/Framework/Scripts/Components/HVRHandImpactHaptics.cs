@@ -41,6 +41,12 @@ namespace HurricaneVR.Framework.Components
 
         protected override void Vibrate(float duration, float amplitude, float frequency)
         {
+           /* if (HandGrabbingPrevents && Hand.IsGrabbing) return;
+            Hand.Controller.Vibrate(amplitude, duration, frequency);*/
+        }
+
+        public void Vibrate1(float duration, float amplitude, float frequency)
+        {
             if (HandGrabbingPrevents && Hand.IsGrabbing) return;
             Hand.Controller.Vibrate(amplitude, duration, frequency);
         }

@@ -192,6 +192,7 @@ public class GateCutting : Mesin
     {
             if (SuaraMesin != null && Anim != null && _statetMesin == StatetMesin.None && _statetSimulasi != StatetSimulasi.Gagal && SimulasiManager.Instance.kondisi != KondisiEnum.Mesin2)
             {
+            SimulasiManager.Instance.kondisi = KondisiEnum.Mesin1;
                 _statetMesin = StatetMesin.Nyala;
                 isMesinOn = true;
                 SuaraMesin.Play();

@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using HurricaneVR.Framework.Components;
+using UnityEngine;
+using static Unity.Burst.Intrinsics.X86.Avx;
 
 [RequireComponent(typeof(Collider))]
 public class CuttingProximitySensor : MonoBehaviour
@@ -6,6 +8,8 @@ public class CuttingProximitySensor : MonoBehaviour
     [Header("Refs (wajib)")]
     public GateCutting mesin;                        // drag GateCutting
     public SnapBase platform;         // drag komponen snap milik Platform
+    public HVRHandImpactHaptics Left;
+    public HVRHandImpactHaptics Right;
 
     [Header("Identifikasi")]
     public string handTag = "Hand";                  // tag collider tangan/jari
@@ -56,6 +60,9 @@ public class CuttingProximitySensor : MonoBehaviour
                 if (current.name == "RightHandModel")
                 {
                     mesin.SimulasiKecelakaan(hitPos, current);
+                    Left.Vibrate1(Left.Data.Duration, 500, Left.Data.Frequency);
+                    Right.Vibrate1(Left.Data.Duration, 500, Left.Data.Frequency);
+
                     return;
                 }
 

@@ -59,6 +59,8 @@ public class MesinPress : Mesin
 
     [Header("UI")]
     [SerializeField] GameObject UiNpc;
+    [SerializeField] GameObject Tampilan;
+
     private void Awake()
     {
         if (mesh != null)
@@ -200,6 +202,9 @@ public class MesinPress : Mesin
     {
         if (_statetMesin == StatetMesin.None && SimulasiManager.Instance.kondisi != KondisiEnum.Mesin1)
         {
+            SimulasiManager.Instance.kondisi = KondisiEnum.Mesin2;
+            UiNpc.SetActive(false);
+            Tampilan.SetActive(true);
             _statetMesin = StatetMesin.TopPlateUp;
             var rig = PosisiNpc ? PosisiNpc.GetComponent<RigBuilder>() : null;
             if (rig) rig.enabled = true;
@@ -233,6 +238,7 @@ public class MesinPress : Mesin
         SimulasiManager.Instance.kondisi = KondisiEnum.None;
         Debug.Log("[MesinPress] 🔄 Reset simulasi...");
         wsRouter.KirimPesanKeClientTerpilih("benar");
+        SimulasiManager.Instance.kondisi = KondisiEnum.None;
 
         // Reset sensor (aktifkan kembali tangan yang dimatikan)
         if (DarahSfx) DarahSfx.SetActive(false);
